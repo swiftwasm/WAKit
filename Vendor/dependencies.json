@@ -5,7 +5,7 @@
   },
   "wasi-testsuite": {
     "repository": "https://github.com/WebAssembly/wasi-testsuite.git",
-    "revision": "c9c751586fd86b321d595bbef13f2c7403cfdbc5"
+    "revision": "2fec29ea6de1244c124f7fe3bfe9f2946113f66e"
   },
   "swift-format": {
     "repository": "https://github.com/swiftlang/swift-format.git",
