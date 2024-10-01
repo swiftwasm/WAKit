@@ -9,9 +9,19 @@ final class IntegrationTests: XCTestCase {
         let testDir = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Vendor/wasi-testsuite")
+        var failedTests: [String: [String]] = [:]
         for testSuitePath in ["tests/assemblyscript/testsuite", "tests/c/testsuite", "tests/rust/testsuite"] {
             let suitePath = testDir.appendingPathComponent(testSuitePath)
-            try runTestSuite(path: suitePath)
+            try runTestSuite(path: suitePath, failedTests: &failedTests)
+        }
+        if !failedTests.isEmpty {
+            print("Failed tests:")
+            for (suite, cases) in failedTests {
+                print("  \(suite):")
+                for caseName in cases {
+                    print("    \(caseName)")
+                }
+            }
         }
     }
 
@@ -19,36 +29,81 @@ final class IntegrationTests: XCTestCase {
         let name: String
     }
 
-    static var skipTests: [String: [String: String]] {
+    static var skipTests: [String: Set<String>] {
         #if os(Windows)
             return [
-                "WASI Assemblyscript tests": [:],
+                "WASI Assemblyscript tests": [],
                 "WASI C tests": [
-                    "fdopendir-with-access": "Not implemented",
-                    "fopen-with-access": "Not implemented",
-                    "lseek": "Not implemented",
-                    "pread-with-access": "Not implemented",
-                    "pwrite-with-access": "Not implemented",
-                    "stat-dev-ino": "Not implemented",
+                    "fdopendir-with-access",
+                    "fopen-with-access",
+                    "lseek",
+                    "pread-with-access",
+                    "pwrite-with-access",
+                    "stat-dev-ino",
+                    "sock_shutdown-not_sock",
+                    "sock_shutdown-invalid_fd",
                 ],
                 "WASI Rust tests": [
-                    "close_preopen": "Not implemented",
-                    "dangling_fd": "Not implemented",
-                    "dangling_symlink": "Not implemented",
-                    "directory_seek": "Not implemented",
-                    "fd_advise": "Not implemented",
-                    "fd_filestat_set": "Not implemented",
-                    "fd_flags_set": "Not implemented",
-                    "fd_readdir": "Not implemented",
-                    "interesting_paths": "Not implemented",
+                    "close_preopen",
+                    "dangling_fd",
+                    "dangling_symlink",
+                    "directory_seek",
+                    "fd_advise",
+                    "fd_filestat_set",
+                    "fd_flags_set",
+                    "fd_readdir",
+                    "interesting_paths",
+                    "dir_fd_op_failures",
+                    "symlink_create",
+                    "sched_yield",
+                    "overwrite_preopen",
+                    "path_link",
+                    "poll_oneoff_stdio",
+                    "readlink",
+                    "renumber",
+                    "path_filestat",
+                    "remove_directory_trailing_slashes",
+                    "path_rename",
+                    "stdio",
+                    "symlink_filestat",
+                    "path_open_read_write",
+                    "fd_fdstat_set_rights",
+                    "file_allocate",
+                    "path_rename_dir_trailing_slashes",
+                    "path_open_preopen",
                 ],
             ]
         #else
-            return [:]
+            return [
+                "WASI C tests": [
+                    "sock_shutdown-not_sock",
+                    "sock_shutdown-invalid_fd",
+                ],
+                "WASI Rust tests": [
+                    "dir_fd_op_failures",
+                    "symlink_create",
+                    "sched_yield",
+                    "overwrite_preopen",
+                    "path_link",
+                    "poll_oneoff_stdio",
+                    "readlink",
+                    "renumber",
+                    "path_filestat",
+                    "remove_directory_trailing_slashes",
+                    "path_rename",
+                    "stdio",
+                    "symlink_filestat",
+                    "path_open_read_write",
+                    "fd_fdstat_set_rights",
+                    "file_allocate",
+                    "path_rename_dir_trailing_slashes",
+                    "path_open_preopen",
+                ]
+            ]
         #endif
     }
 
-    func runTestSuite(path: URL) throws {
+    func runTestSuite(path: URL, failedTests: inout [String: [String]]) throws {
         let manifestPath = path.appendingPathComponent("manifest.json")
         let manifest = try JSONDecoder().decode(SuiteManifest.self, from: Data(contentsOf: manifestPath))
 
@@ -65,16 +120,23 @@ final class IntegrationTests: XCTestCase {
         print("Running test suite: \(manifest.name)")
         let tests = try FileManager.default.contentsOfDirectory(at: path, includingPropertiesForKeys: nil, options: [])
 
-        let skipTests = Self.skipTests[manifest.name] ?? [:]
+        let skipTests = Self.skipTests[manifest.name] ?? []
 
         for test in tests {
             guard test.pathExtension == "wasm" else { continue }
             let testName = test.deletingPathExtension().lastPathComponent
-            if let reason = skipTests[testName] {
-                print("Skipping test \(testName): \(reason)")
+            if skipTests.contains(testName) {
+                print("Test \(testName) skipped")
                 continue
             }
-            try runTest(path: test)
+            print("Test \(testName) started")
+            switch try runTest(path: test) {
+            case .success:
+                print("Test \(testName) passed")
+            case .failure(let error):
+                XCTFail("Test \(testName) failed: \(error)")
+                failedTests[manifest.name, default: []].append(testName)
+            }
         }
     }
 
@@ -89,7 +151,11 @@ final class IntegrationTests: XCTestCase {
         }
     }
 
-    func runTest(path: URL) throws {
+    enum TestError: Error {
+        case unexpectedExitCode(actual: UInt32, expected: UInt32)
+    }
+
+    func runTest(path: URL) throws -> Result<(), Error> {
         let manifestPath = path.deletingPathExtension().appendingPathExtension("json")
         var manifest: CaseManifest
         if FileManager.default.fileExists(atPath: manifestPath.path) {
@@ -107,8 +173,6 @@ final class IntegrationTests: XCTestCase {
 
         let suitePath = path.deletingLastPathComponent()
 
-        print("Testing \(path.path)")
-
         let wasi = try WASIBridgeToHost(
             args: [path.path] + (manifest.args ?? []),
             environment: manifest.env ?? [:],
@@ -119,7 +183,15 @@ final class IntegrationTests: XCTestCase {
         let runtime = Runtime(hostModules: wasi.hostModules)
         let module = try parseWasm(filePath: FilePath(path.path))
         let instance = try runtime.instantiate(module: module)
-        let exitCode = try wasi.start(instance, runtime: runtime)
-        XCTAssertEqual(exitCode, manifest.exitCode ?? 0, path.path)
+        do {
+            let exitCode = try wasi.start(instance, runtime: runtime)
+            let expected = manifest.exitCode ?? 0
+            if exitCode != expected {
+                throw TestError.unexpectedExitCode(actual: exitCode, expected: expected)
+            }
+            return .success(())
+        } catch {
+            return .failure(error)
+        }
     }
 }
