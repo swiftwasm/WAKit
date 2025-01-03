@@ -226,6 +226,7 @@ public enum Instruction: Equatable {
     case `tableSet`(table: UInt32)
     case `tableGrow`(table: UInt32)
     case `tableSize`(table: UInt32)
+    case `callRef`(functionIndex: UInt32)
 }
 
 /// A visitor that visits all instructions by a single visit method.
@@ -287,6 +288,7 @@ extension AnyInstructionVisitor {
     public mutating func visitTableSet(table: UInt32) throws { return try self.visit(.tableSet(table: table)) }
     public mutating func visitTableGrow(table: UInt32) throws { return try self.visit(.tableGrow(table: table)) }
     public mutating func visitTableSize(table: UInt32) throws { return try self.visit(.tableSize(table: table)) }
+    public mutating func visitCallRef(functionIndex: UInt32) throws { return try self.visit(.callRef(functionIndex: functionIndex)) }
 }
 
 /// A visitor for WebAssembly instructions.
@@ -398,6 +400,8 @@ public protocol InstructionVisitor {
     mutating func visitTableGrow(table: UInt32) throws
     /// Visiting `table.size` instruction.
     mutating func visitTableSize(table: UInt32) throws
+    /// Visiting `call_ref` instruction.
+    mutating func visitCallRef(functionIndex: UInt32) throws
 }
 
 extension InstructionVisitor {
@@ -456,6 +460,7 @@ extension InstructionVisitor {
         case let .tableSet(table): return try visitTableSet(table: table)
         case let .tableGrow(table): return try visitTableGrow(table: table)
         case let .tableSize(table): return try visitTableSize(table: table)
+        case let .callRef(functionIndex): return try visitCallRef(functionIndex: functionIndex)
         }
     }
 }
@@ -514,5 +519,6 @@ extension InstructionVisitor {
     public mutating func visitTableSet(table: UInt32) throws {}
     public mutating func visitTableGrow(table: UInt32) throws {}
     public mutating func visitTableSize(table: UInt32) throws {}
+    public mutating func visitCallRef(functionIndex: UInt32) throws {}
 }
 

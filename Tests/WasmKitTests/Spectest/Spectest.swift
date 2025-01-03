@@ -30,6 +30,10 @@ public struct SpectestResult {
         "\(Int(Double(numerator) / Double(denominator) * 100))%"
     }
 
+    func sortedFailedCases() -> [String] {
+        failedCases.map { URL(filePath: $0).pathComponents.suffix(2).joined(separator: "/") }.sorted()
+    }
+
     func dump() {
         print(
             "\(passed)/\(total) (\(percentage(passed, total)) passing, \(percentage(skipped, total)) skipped, \(percentage(failed, total)) failed)"

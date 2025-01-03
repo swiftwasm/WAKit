@@ -22,9 +22,9 @@ extension Execution {
     mutating func refNull(sp: Sp, immediate: Instruction.RefNullOperand) {
         let value: Value
         switch immediate.type {
-        case .externRef:
+        case .externRef, .externRefNonNull:
             value = .ref(.extern(nil))
-        case .funcRef:
+        case .funcRef, .funcRefNonNull:
             value = .ref(.function(nil))
         }
         sp[immediate.result] = UntypedValue(value)

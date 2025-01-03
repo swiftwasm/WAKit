@@ -606,6 +606,34 @@ struct WatParser {
     }
 
     mutating func valueType() throws -> ValueType {
+        if try parser.peek(.leftParen) != nil {
+            return try _referenceValueType()
+        } else {
+            return try _valueType()
+        }
+    }
+
+    // must consume right paren
+    mutating func _referenceValueType() throws -> ValueType {
+        var isNullable = false
+        _ = try parser.takeParenBlockStart("ref")
+        if try parser.peekKeyword() == "null" {
+            _ = try parser.takeKeyword("null")
+            isNullable = true
+        }
+
+        if try parser.takeId() != nil {
+            _ = try parser.take(.rightParen)
+            return .ref(refType(keyword: "func", isNullable: isNullable)!)
+        }
+
+        let keyword = try parser.expectKeyword()
+        _ = try parser.take(.rightParen)
+        if let refType = refType(keyword: keyword, isNullable: isNullable) { return .ref(refType) }
+        throw WatParserError("unexpected value type \(keyword)", location: parser.lexer.location())
+    }
+
+    mutating func _valueType() throws -> ValueType {
         let keyword = try parser.expectKeyword()
         switch keyword {
         case "i32": return .i32
@@ -613,22 +641,24 @@ struct WatParser {
         case "f32": return .f32
         case "f64": return .f64
         default:
-            if let refType = refType(keyword: keyword) { return .ref(refType) }
+            if let refType = refType(keyword: keyword, isNullable: true) { return .ref(refType) }
             throw WatParserError("unexpected value type \(keyword)", location: parser.lexer.location())
         }
     }
 
-    mutating func refType(keyword: String) -> ReferenceType? {
+    mutating func refType(keyword: String, isNullable: Bool) -> ReferenceType? {
         switch keyword {
         case "funcref": return .funcRef
         case "externref": return .externRef
+        case "func": return isNullable ? .funcRef : .funcRefNonNull
+        case "extern": return isNullable ? .externRef : .externRefNonNull
         default: return nil
         }
     }
 
     mutating func refType() throws -> ReferenceType {
         let keyword = try parser.expectKeyword()
-        guard let refType = refType(keyword: keyword) else {
+        guard let refType = refType(keyword: keyword, isNullable: true) else {
             throw WatParserError("unexpected ref type \(keyword)", location: parser.lexer.location())
         }
         return refType

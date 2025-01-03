@@ -277,8 +277,12 @@ struct TableEntity /* : ~Copyable */ {
         switch tableType.elementType {
         case .funcRef:
             emptyElement = .function(nil)
+        case .funcRefNonNull:
+            emptyElement = .function(nil) // shouldn't be null
         case .externRef:
             emptyElement = .extern(nil)
+        case .externRefNonNull:
+            emptyElement = .extern(nil) // shouldn't be null
         }
 
         let numberOfElements = Int(tableType.limits.min)

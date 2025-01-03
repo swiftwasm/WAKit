@@ -362,7 +362,9 @@ struct ExpressionParser<Visitor: InstructionVisitor> {
     }
 
     private mutating func refKind() throws -> ReferenceType {
-        if try parser.takeKeyword("func") {
+        if try parser.take(.id) {
+            return .funcRef // not sure about this.
+        } else if try parser.takeKeyword("func") {
             return .funcRef
         } else if try parser.takeKeyword("extern") {
             return .externRef
@@ -438,6 +440,10 @@ extension ExpressionParser {
     mutating func visitCall(wat: inout Wat) throws -> UInt32 {
         let use = try parser.expectIndexOrId()
         return UInt32(try wat.functionsMap.resolve(use: use).index)
+    }
+    mutating func visitCallRef(wat: inout Wat) throws -> UInt32 {
+        let use = try parser.expectIndexOrId()
+        return UInt32(try wat.types.resolve(use: use).index)
     }
     mutating func visitCallIndirect(wat: inout Wat) throws -> (typeIndex: UInt32, tableIndex: UInt32) {
         let tableIndex: UInt32

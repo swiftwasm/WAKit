@@ -67,7 +67,9 @@ struct WastParser {
             let value: Reference
             switch type {
             case .externRef: value = .extern(nil)
+            case .externRefNonNull: value = .function(nil) // non null
             case .funcRef: value = .function(nil)
+            case .funcRefNonNull: value = .function(nil) // non null
             }
             addValue(.ref(value))
         }

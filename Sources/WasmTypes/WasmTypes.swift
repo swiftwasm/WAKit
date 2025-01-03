@@ -18,8 +18,15 @@ public struct FunctionType: Equatable, Hashable {
 public enum ReferenceType: UInt8, Equatable, Hashable {
     /// A nullable reference type to a function.
     case funcRef
+
+    /// A non-nullable reference type to a function
+    case funcRefNonNull
+
     /// A nullable external reference type.
     case externRef
+
+    /// A non-nullable external reference type.
+    case externRefNonNull
 }
 
 public enum ValueType: Equatable, Hashable {

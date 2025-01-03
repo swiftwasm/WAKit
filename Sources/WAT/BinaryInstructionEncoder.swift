@@ -392,4 +392,8 @@ extension BinaryInstructionEncoder {
         try encodeInstruction([0xFC, 0x10])
         try encodeImmediates(table: table)
     }
+    mutating func visitCallRef(functionIndex: UInt32) throws {
+        try encodeInstruction([0x14])
+        try encodeImmediates(functionIndex: functionIndex)
+    }
 }

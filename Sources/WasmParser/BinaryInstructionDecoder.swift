@@ -86,6 +86,8 @@ protocol BinaryInstructionDecoder {
     @inlinable mutating func visitTableGrow() throws -> UInt32
     /// Decode `table.size` immediates
     @inlinable mutating func visitTableSize() throws -> UInt32
+    /// Decode `call_ref` immediates
+    @inlinable mutating func visitCallRef() throws -> UInt32
 }
 @inlinable
 func parseBinaryInstruction<V: InstructionVisitor, D: BinaryInstructionDecoder>(visitor: inout V, decoder: inout D) throws -> Bool {
@@ -132,6 +134,9 @@ func parseBinaryInstruction<V: InstructionVisitor, D: BinaryInstructionDecoder>(
     case 0x13:
         let (typeIndex, tableIndex) = try decoder.visitReturnCallIndirect()
         try visitor.visitReturnCallIndirect(typeIndex: typeIndex, tableIndex: tableIndex)
+    case 0x14:
+        let (functionIndex) = try decoder.visitCallRef()
+        try visitor.visitCallRef(functionIndex: functionIndex)
     case 0x1A:
         try visitor.visitDrop()
     case 0x1B:

@@ -332,6 +332,9 @@ func parseTextInstruction<V: InstructionVisitor>(keyword: String, expressionPars
     case "i64.trunc_sat_f32_u": return { return try $0.visitConversion(.i64TruncSatF32U) }
     case "i64.trunc_sat_f64_s": return { return try $0.visitConversion(.i64TruncSatF64S) }
     case "i64.trunc_sat_f64_u": return { return try $0.visitConversion(.i64TruncSatF64U) }
+    case "call_ref":
+        let (functionIndex) = try expressionParser.visitCallRef(wat: &wat)
+        return { return try $0.visitCallRef(functionIndex: functionIndex) }
     default: return nil
     }
 }
