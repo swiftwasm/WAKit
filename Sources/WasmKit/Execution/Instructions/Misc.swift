@@ -21,13 +21,11 @@ extension Execution {
 extension Execution {
     mutating func refNull(sp: Sp, immediate: Instruction.RefNullOperand) {
         let value: Value
-        switch immediate.type {
+        switch immediate.type.heapType {
         case .externRef:
             value = .ref(.extern(nil))
         case .funcRef:
             value = .ref(.function(nil))
-        default:
-            fatalError()
         }
         sp[immediate.result] = UntypedValue(value)
     }

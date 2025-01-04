@@ -333,8 +333,6 @@ struct ModuleValidator {
 extension WasmTypes.Reference {
     /// Checks if the reference type matches the expected type.
     func checkType(_ type: WasmTypes.ReferenceType) throws {
-
-        // Should we validate nonNull variants have associated values present?
         switch (self, type) {
         case (.function, .funcRef): return
         case (.extern, .externRef): return
