@@ -32,7 +32,7 @@ public struct SpectestResult {
     }
 
     func sortedFailedCases() -> [String] {
-        failedCases.map { URL(filePath: $0).pathComponents.suffix(2).joined(separator: "/") }.sorted()
+        failedCases.map { URL(fileURLWithPath: $0).pathComponents.suffix(2).joined(separator: "/") }.sorted()
     }
 
     func dump() {
