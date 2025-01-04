@@ -624,6 +624,7 @@ extension Parser: BinaryInstructionDecoder {
     @inlinable mutating func visitCall() throws -> UInt32 { try parseUnsigned() }
     @inlinable mutating func visitCallRef() throws -> UInt32 {
         // TODO reference types checks
+        // traps on nil
         try parseUnsigned()
     }
 

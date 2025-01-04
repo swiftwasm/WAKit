@@ -7,6 +7,7 @@ private func loadStringArrayFromEnvironment(_ key: String) -> [String] {
     ProcessInfo.processInfo.environment[key]?.split(separator: ",").map(String.init) ?? []
 }
 
+@available(macOS 11, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
 public struct SpectestResult {
     var passed = 0
     var skipped = 0
