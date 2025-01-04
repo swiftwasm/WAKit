@@ -396,4 +396,17 @@ extension BinaryInstructionEncoder {
         try encodeInstruction([0x14])
         try encodeImmediates(functionIndex: functionIndex)
     }
+    mutating func visitReturnCallRef(functionIndex: UInt32) throws {
+        try encodeInstruction([0x15])
+        try encodeImmediates(functionIndex: functionIndex)
+    }
+    mutating func visitAsNonNull() throws { try encodeInstruction([0xD4]) }
+    mutating func visitBrOnNull(functionIndex: UInt32) throws {
+        try encodeInstruction([0xD5])
+        try encodeImmediates(functionIndex: functionIndex)
+    }
+    mutating func visitBrOnNonNull(functionIndex: UInt32) throws {
+        try encodeInstruction([0xD6])
+        try encodeImmediates(functionIndex: functionIndex)
+    }
 }

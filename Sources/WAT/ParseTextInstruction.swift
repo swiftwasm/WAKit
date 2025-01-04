@@ -335,6 +335,16 @@ func parseTextInstruction<V: InstructionVisitor>(keyword: String, expressionPars
     case "call_ref":
         let (functionIndex) = try expressionParser.visitCallRef(wat: &wat)
         return { return try $0.visitCallRef(functionIndex: functionIndex) }
+    case "return_call_ref":
+        let (functionIndex) = try expressionParser.visitReturnCallRef(wat: &wat)
+        return { return try $0.visitReturnCallRef(functionIndex: functionIndex) }
+    case "as_non_null": return { return try $0.visitAsNonNull() }
+    case "br_on_null":
+        let (functionIndex) = try expressionParser.visitBrOnNull(wat: &wat)
+        return { return try $0.visitBrOnNull(functionIndex: functionIndex) }
+    case "br_on_non_null":
+        let (functionIndex) = try expressionParser.visitBrOnNonNull(wat: &wat)
+        return { return try $0.visitBrOnNonNull(functionIndex: functionIndex) }
     default: return nil
     }
 }

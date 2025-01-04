@@ -51,7 +51,7 @@ final class SpectestTests: XCTestCase {
         let defaultConfig = EngineConfiguration()
         let result = try await spectestResult(
             path: Self.functionReferences,
-            include: ["function-references/call_ref.wast"], // focusing on call_ref for now, but will update to run all function-references tests.
+            include: ["function-references/call_ref.wast"],  // focusing on call_ref for now, but will update to run all function-references tests.
             exclude: [],
             parallel: false,
             configuration: defaultConfig
@@ -116,7 +116,7 @@ final class SpectestTests: XCTestCase {
                 "gc/type-rec.wast",
                 "gc/type-subtyping.wast",
                 "gc/unreached-invalid.wast",
-                "gc/unreached-valid.wast"
+                "gc/unreached-valid.wast",
             ]
         )
     }

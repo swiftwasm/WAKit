@@ -202,5 +202,9 @@
   ["saturatingFloatToInt", "i64.trunc_sat_f32_u"      , ["0xFC", "0x05"], []                                                 , "conversion"],
   ["saturatingFloatToInt", "i64.trunc_sat_f64_s"      , ["0xFC", "0x06"], []                                                 , "conversion"],
   ["saturatingFloatToInt", "i64.trunc_sat_f64_u"      , ["0xFC", "0x07"], []                                                 , "conversion"],
-  ["referenceTypes"      , "call_ref"                 , ["0x14"]        , [["functionIndex", "UInt32"]]                      , null        ]
+  ["referenceTypes"      , "call_ref"                 , ["0x14"]        , [["functionIndex", "UInt32"]]                      , null        ],
+  ["referenceTypes"      , "return_call_ref"          , ["0x15"]        , [["functionIndex", "UInt32"]]                      , null        ],
+  ["referenceTypes"      , "as_non_null"              , ["0xd4"]        , []                                                 , null        ],
+  ["referenceTypes"      , "br_on_null"               , ["0xd5"]        , [["functionIndex", "UInt32"]]                      , null        ],
+  ["referenceTypes"      , "br_on_non_null"           , ["0xd6"]        , [["functionIndex", "UInt32"]]                      , null        ]
 ]

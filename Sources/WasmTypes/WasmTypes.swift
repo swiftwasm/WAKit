@@ -16,10 +16,10 @@ public struct FunctionType: Equatable, Hashable {
 
 public enum HeapType: UInt8, Equatable, Hashable {
     /// A reference to any kind of function.
-    case funcRef // -> to be renamed func
+    case funcRef  // -> to be renamed func
 
     /// An external host data.
-    case externRef // -> to be renamed extern
+    case externRef  // -> to be renamed extern
 }
 
 /// Reference types

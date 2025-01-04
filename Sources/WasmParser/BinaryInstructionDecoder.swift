@@ -88,6 +88,12 @@ protocol BinaryInstructionDecoder {
     @inlinable mutating func visitTableSize() throws -> UInt32
     /// Decode `call_ref` immediates
     @inlinable mutating func visitCallRef() throws -> UInt32
+    /// Decode `return_call_ref` immediates
+    @inlinable mutating func visitReturnCallRef() throws -> UInt32
+    /// Decode `br_on_null` immediates
+    @inlinable mutating func visitBrOnNull() throws -> UInt32
+    /// Decode `br_on_non_null` immediates
+    @inlinable mutating func visitBrOnNonNull() throws -> UInt32
 }
 @inlinable
 func parseBinaryInstruction<V: InstructionVisitor, D: BinaryInstructionDecoder>(visitor: inout V, decoder: inout D) throws -> Bool {
@@ -137,6 +143,9 @@ func parseBinaryInstruction<V: InstructionVisitor, D: BinaryInstructionDecoder>(
     case 0x14:
         let (functionIndex) = try decoder.visitCallRef()
         try visitor.visitCallRef(functionIndex: functionIndex)
+    case 0x15:
+        let (functionIndex) = try decoder.visitReturnCallRef()
+        try visitor.visitReturnCallRef(functionIndex: functionIndex)
     case 0x1A:
         try visitor.visitDrop()
     case 0x1B:
@@ -516,6 +525,14 @@ func parseBinaryInstruction<V: InstructionVisitor, D: BinaryInstructionDecoder>(
     case 0xD2:
         let (functionIndex) = try decoder.visitRefFunc()
         try visitor.visitRefFunc(functionIndex: functionIndex)
+    case 0xD4:
+        try visitor.visitAsNonNull()
+    case 0xD5:
+        let (functionIndex) = try decoder.visitBrOnNull()
+        try visitor.visitBrOnNull(functionIndex: functionIndex)
+    case 0xD6:
+        let (functionIndex) = try decoder.visitBrOnNonNull()
+        try visitor.visitBrOnNonNull(functionIndex: functionIndex)
     case 0xFC:
 
         let opcode1 = try decoder.claimNextByte()

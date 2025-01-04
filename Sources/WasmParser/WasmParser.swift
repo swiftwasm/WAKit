@@ -648,6 +648,10 @@ extension Parser: BinaryInstructionDecoder {
         return (typeIndex, tableIndex)
     }
 
+    @inlinable mutating func visitReturnCallRef() throws -> UInt32 {
+        return 0
+    }
+
     @inlinable mutating func visitTypedSelect() throws -> WasmTypes.ValueType {
         let results = try parseVector { try parseValueType() }
         guard results.count == 1 else {
@@ -691,6 +695,12 @@ extension Parser: BinaryInstructionDecoder {
             throw makeError(.expectedRefType(actual: type))
         }
         return refType
+    }
+    @inlinable mutating func visitBrOnNull() throws -> UInt32 {
+        return 0
+    }
+    @inlinable mutating func visitBrOnNonNull() throws -> UInt32 {
+        return 0
     }
 
     @inlinable mutating func visitRefFunc() throws -> UInt32 { try parseUnsigned() }
