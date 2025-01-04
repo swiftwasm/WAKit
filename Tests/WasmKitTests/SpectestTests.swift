@@ -73,8 +73,8 @@ final class SpectestTests: XCTestCase {
             configuration: defaultConfig
         )
 
-        XCTAssertEqual(result.passed, 1313)
-        XCTAssertEqual(result.failed, 221)
+        XCTAssertEqual(result.passed, 1400)
+        XCTAssertEqual(result.failed, 134)
         XCTAssertEqual(
             result.sortedFailedCases(),
             [
@@ -106,8 +106,6 @@ final class SpectestTests: XCTestCase {
                 "gc/ref_is_null.wast",
                 "gc/ref_null.wast",
                 "gc/ref_test.wast",
-                "gc/return_call.wast",
-                "gc/return_call_indirect.wast",
                 "gc/return_call_ref.wast",
                 "gc/select.wast",
                 "gc/struct.wast",
