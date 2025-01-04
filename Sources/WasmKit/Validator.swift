@@ -337,9 +337,7 @@ extension WasmTypes.Reference {
         // Should we validate nonNull variants have associated values present?
         switch (self, type) {
         case (.function, .funcRef): return
-        case (.function, .funcRefNonNull): return
         case (.extern, .externRef): return
-        case (.extern, .externRefNonNull): return
         default:
             throw ValidationError(.expectTypeButGot(expected: "\(type)", got: "\(self)"))
         }

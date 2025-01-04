@@ -650,8 +650,8 @@ struct WatParser {
         switch keyword {
         case "funcref": return .funcRef
         case "externref": return .externRef
-        case "func": return isNullable ? .funcRef : .funcRefNonNull
-        case "extern": return isNullable ? .externRef : .externRefNonNull
+        case "func": return ReferenceType(isNullable: isNullable, heapType: .funcRef)
+        case "extern": return ReferenceType(isNullable: isNullable, heapType: .funcRef)
         default: return nil
         }
     }

@@ -117,14 +117,10 @@ struct UntypedValue: Equatable, Hashable {
         switch type {
         case .funcRef:
             return .function(decodeOptionalInt())
-        case .funcRefNonNull:
-            // can skip optional check
-            return .function(decodeOptionalInt())
         case .externRef:
             return .extern(decodeOptionalInt())
-        case .externRefNonNull:
-            // can skip optional check
-            return .extern(decodeOptionalInt())
+        default:
+            fatalError()
         }
     }
 

@@ -444,7 +444,7 @@ extension Parser {
         case 0x7C: return .f64
         case 0x7B: return .f64
         case 0x70: return .ref(.funcRef)
-        case 0x71: return .ref(.funcRefNonNull)
+        case 0x71: return .ref(.funcRef)
         case 0x6F: return .ref(.externRef)
         default:
             throw StreamError<Stream.Element>.unexpected(b, index: offset, expected: Set(0x7C...0x7F))

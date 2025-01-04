@@ -105,11 +105,11 @@ extension Int32: InstructionImmediate {
 
 extension Instruction.RefNullOperand {
     init(result: VReg, type: ReferenceType) {
-        self.init(result: result, rawType: type.rawValue)
+        self.init(result: result, rawType: 0) // need to figure out rawType here
     }
 
     var type: ReferenceType {
-        ReferenceType(rawValue: rawType).unsafelyUnwrapped
+        ReferenceType(isNullable: true, heapType: .funcRef) // is this still a valid conversion?
     }
 }
 

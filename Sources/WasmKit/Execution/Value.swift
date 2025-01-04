@@ -1,4 +1,4 @@
-import enum WasmTypes.ReferenceType
+import struct WasmTypes.ReferenceType
 import enum WasmTypes.ValueType
 
 /// > Note:

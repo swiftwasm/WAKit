@@ -62,8 +62,10 @@ extension ConstExpression {
             return try context.globalValue(globalIndex)
         case .refNull(let type):
             switch type {
-            case .externRef, .externRefNonNull: return .ref(.extern(nil))
-            case .funcRef, .funcRefNonNull: return .ref(.function(nil))
+            case .externRef: return .ref(.extern(nil))
+            case .funcRef: return .ref(.function(nil))
+            default:
+                throw ValidationError(.illegalConstExpressionInstruction(constInst))
             }
         case .refFunc(let functionIndex):
             return try .ref(context.functionRef(functionIndex))

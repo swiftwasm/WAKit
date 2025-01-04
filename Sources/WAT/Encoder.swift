@@ -127,11 +127,9 @@ extension ValueType: WasmEncodable {
 
 extension ReferenceType: WasmEncodable {
     func encode(to encoder: inout Encoder) {
-        switch self {
-        case .funcRef: encoder.output.append(0x70)
-        case .funcRefNonNull: encoder.output.append(0x71)
+        switch self.heapType {
+        case .funcRef: encoder.output.append(isNullable ? 0x70 : 0x71)
         case .externRef: encoder.output.append(0x6F)
-        case .externRefNonNull: encoder.output.append(0x6E) // Is this correct
         }
     }
 }

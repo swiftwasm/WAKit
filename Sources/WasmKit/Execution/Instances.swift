@@ -274,15 +274,11 @@ struct TableEntity /* : ~Copyable */ {
 
     init(_ tableType: TableType, resourceLimiter: any ResourceLimiter) throws {
         let emptyElement: Reference
-        switch tableType.elementType {
+        switch tableType.elementType.heapType {
         case .funcRef:
             emptyElement = .function(nil)
-        case .funcRefNonNull:
-            emptyElement = .function(nil) // shouldn't be null
         case .externRef:
             emptyElement = .extern(nil)
-        case .externRefNonNull:
-            emptyElement = .extern(nil) // shouldn't be null
         }
 
         let numberOfElements = Int(tableType.limits.min)
