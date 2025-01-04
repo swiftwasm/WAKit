@@ -63,9 +63,9 @@ struct WastParser {
         mutating func visitRefFunc(functionIndex: UInt32) throws {
             addValue(.ref(.function(FunctionAddress(functionIndex))))
         }
-        mutating func visitRefNull(type: HeapType) throws {
+        mutating func visitRefNull(type: ReferenceType) throws {
             let value: Reference
-            switch type {
+            switch type.heapType {
             case .externRef: value = .extern(nil)
             case .funcRef: value = .function(nil)
             }

@@ -14,7 +14,7 @@ public struct FunctionType: Equatable, Hashable {
     public let results: [ValueType]
 }
 
-public enum HeapType: Equatable, Hashable {
+public enum HeapType: UInt8, Equatable, Hashable {
     /// A reference to any kind of function.
     case funcRef // -> to be renamed func
 
