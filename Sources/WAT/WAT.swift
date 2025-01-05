@@ -176,8 +176,25 @@ func parseWAT(_ parser: inout Parser, features: WasmFeatureSet) throws -> Wat {
 
     let initialParser = parser
 
-    var importFactories: [() throws -> Import] = []
     var typesMap = TypesMap()
+
+    do {
+        var unresolvedTypesMapping = NameMapping<WatParser.FunctionTypeDecl>()
+        // 1. Collect module type decls and resolve symbolic references inside
+        // their definitions.
+        var watParser = WatParser(parser: initialParser)
+        while let decl = try watParser.next() {
+            guard case let .type(decl) = decl.kind else { continue }
+            try unresolvedTypesMapping.add(decl)
+        }
+        for decl in unresolvedTypesMapping {
+            try typesMap.add(TypesMap.NamedResolvedType(
+                id: decl.id, type: decl.type.resolve(unresolvedTypesMapping)
+            ))
+        }
+    }
+
+    var importFactories: [() throws -> Import] = []
     var functionsMap = NameMapping<WatParser.FunctionDecl>()
     var tablesMap = NameMapping<WatParser.TableDecl>()
     var memoriesMap = NameMapping<WatParser.MemoryDecl>()
@@ -219,8 +236,7 @@ func parseWAT(_ parser: inout Parser, features: WasmFeatureSet) throws -> Wat {
         }
 
         switch decl.kind {
-        case let .type(decl):
-            try typesMap.add(decl)
+        case let .type(decl): break
         case let .function(decl):
             try checkImportOrder(decl.importNames)
             let index = try functionsMap.add(decl)
@@ -244,7 +260,7 @@ func parseWAT(_ parser: inout Parser, features: WasmFeatureSet) throws -> Wat {
                 try elementSegmentsMap.add(inlineElement)
             }
             if let importNames = decl.importNames {
-                addImport(importNames) { .table(decl.type) }
+                addImport(importNames) { try .table(decl.type.resolve(typesMap)) }
             }
         case let .memory(decl):
             try checkImportOrder(decl.importNames)
@@ -266,7 +282,7 @@ func parseWAT(_ parser: inout Parser, features: WasmFeatureSet) throws -> Wat {
             switch decl.kind {
             case .definition: break
             case .imported(let importNames):
-                addImport(importNames) { .global(decl.type) }
+                addImport(importNames) { try .global(decl.type.resolve(typesMap)) }
             }
         case let .element(decl):
             try elementSegmentsMap.add(decl)
@@ -282,13 +298,13 @@ func parseWAT(_ parser: inout Parser, features: WasmFeatureSet) throws -> Wat {
         }
     }
 
-    // 1. Collect module decls and create name -> index mapping
+    // 2. Collect module decls and create name -> index mapping
     var watParser = WatParser(parser: initialParser)
     while let decl = try watParser.next() {
         try visitDecl(decl: decl)
     }
 
-    // 2. Resolve a part of module items that reference other module items.
+    // 3. Resolve a part of module items that reference other module items.
     // Remaining items like $id references like (call $func) are resolved during encoding.
     let exports: [Export] = try exportDecls.compactMap {
         let descriptor: ExportDescriptor
@@ -314,8 +330,8 @@ func parseWAT(_ parser: inout Parser, features: WasmFeatureSet) throws -> Wat {
         types: typesMap,
         functionsMap: functionsMap,
         tablesMap: tablesMap,
-        tables: tablesMap.map {
-            Table(type: $0.type)
+        tables: try tablesMap.map {
+            try Table(type: $0.type.resolve(typesMap))
         },
         memories: memoriesMap,
         globals: globalsMap,

@@ -474,10 +474,14 @@ extension Parser {
     /// <https://webassembly.github.io/function-references/core/binary/types.html#heap-types>
     @usableFromInline
     func parseHeapType() throws -> HeapType {
-        let b = try stream.consumeAny()
+        let b = try stream.peek()
         switch b {
-        case 0x6F: return .externRef
-        case 0x70: return .funcRef
+        case 0x6F:
+            _ = try stream.consumeAny()
+            return .externRef
+        case 0x70:
+            _ = try stream.consumeAny()
+            return .funcRef
         default:
             let rawIndex = try stream.parseVarSigned33()
             guard let index = TypeIndex(exactly: rawIndex) else {

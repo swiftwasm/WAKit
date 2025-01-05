@@ -2,7 +2,7 @@ import WasmParser
 import WasmTypes
 
 struct ExpressionParser<Visitor: InstructionVisitor> {
-    typealias LocalsMap = NameMapping<WatParser.LocalDecl>
+    typealias LocalsMap = NameMapping<WatParser.ResolvedLocalDecl>
     private struct LabelStack {
         private var stack: [String?] = []
 
@@ -43,10 +43,11 @@ struct ExpressionParser<Visitor: InstructionVisitor> {
         type: WatParser.FunctionType,
         locals: [WatParser.LocalDecl],
         lexer: Lexer,
-        features: WasmFeatureSet
+        features: WasmFeatureSet,
+        typeMap: TypesNameMapping
     ) throws {
         self.parser = Parser(lexer)
-        self.locals = try Self.computeLocals(type: type, locals: locals)
+        self.locals = try Self.computeLocals(type: type, locals: locals, typeMap: typeMap)
         self.features = features
     }
 
@@ -56,13 +57,17 @@ struct ExpressionParser<Visitor: InstructionVisitor> {
         self.features = features
     }
 
-    static func computeLocals(type: WatParser.FunctionType, locals: [WatParser.LocalDecl]) throws -> LocalsMap {
+    static func computeLocals(
+        type: WatParser.FunctionType,
+        locals: [WatParser.LocalDecl],
+        typeMap: TypesNameMapping
+    ) throws -> LocalsMap {
         var localsMap = LocalsMap()
         for (name, type) in zip(type.parameterNames, type.signature.parameters) {
-            try localsMap.add(WatParser.LocalDecl(id: name, type: type))
+            try localsMap.add(.init(id: name, type: type))
         }
         for local in locals {
-            try localsMap.add(local)
+            try localsMap.add(local.resolve(typeMap))
         }
         return localsMap
     }
@@ -261,8 +266,10 @@ struct ExpressionParser<Visitor: InstructionVisitor> {
         case "select":
             // Special handling for "select", which have two variants 1. with type, 2. without type
             let results = try withWatParser({ try $0.results() })
+            let types = wat.types
             return { visitor in
                 if let type = results.first {
+                    let type = try type.resolve(types)
                     return try visitor.visitTypedSelect(type: type)
                 } else {
                     return try visitor.visitSelect()
@@ -338,7 +345,9 @@ struct ExpressionParser<Visitor: InstructionVisitor> {
     }
 
     private mutating func blockType(wat: inout Wat) throws -> BlockType {
-        let results = try withWatParser({ try $0.results() })
+        let results = try withWatParser {
+            try $0.results().map { try $0.resolve(wat.types) }
+        }
         if !results.isEmpty {
             return try wat.types.resolveBlockType(results: results)
         }
