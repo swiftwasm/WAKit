@@ -1879,8 +1879,12 @@ struct InstructionTranslator<Context: TranslatorContext>: InstructionVisitor {
     mutating func visitI64Const(value: Int64) -> Output { visitConst(.i64, .i64(UInt64(bitPattern: value))) }
     mutating func visitF32Const(value: IEEE754.Float32) -> Output { visitConst(.f32, .f32(value.bitPattern)) }
     mutating func visitF64Const(value: IEEE754.Float64) -> Output { visitConst(.f64, .f64(value.bitPattern)) }
-    mutating func visitRefNull(type: WasmTypes.ReferenceType) -> Output {
-        pushEmit(.ref(type), { .refNull(Instruction.RefNullOperand(result: $0, type: type)) })
+    mutating func visitRefNull(type: HeapType) throws {
+        guard case let .abstract(abstractType) = type else {
+            throw TranslationError("concrete heap type is not implemented yet")
+        }
+        let typeToPush = ReferenceType(isNullable: true, heapType: type)
+        pushEmit(.ref(typeToPush), { .refNull(Instruction.RefNullOperand(result: $0, type: abstractType)) })
     }
     mutating func visitRefIsNull() throws -> Output {
         let value = try valueStack.popRef()

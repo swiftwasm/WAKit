@@ -14,12 +14,25 @@ public struct FunctionType: Equatable, Hashable {
     public let results: [ValueType]
 }
 
-public enum HeapType: UInt8, Equatable, Hashable {
+public enum AbstractHeapType: UInt8, Equatable, Hashable {
     /// A reference to any kind of function.
     case funcRef  // -> to be renamed func
 
     /// An external host data.
     case externRef  // -> to be renamed extern
+}
+
+public enum HeapType: Equatable, Hashable {
+    case abstract(AbstractHeapType)
+    case concrete(typeIndex: UInt32)
+
+    public static var funcRef: HeapType {
+        return .abstract(.funcRef)
+    }
+
+    public static var externRef: HeapType {
+        return .abstract(.externRef)
+    }
 }
 
 /// Reference types

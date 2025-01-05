@@ -115,10 +115,12 @@ struct UntypedValue: Equatable, Hashable {
             return Int(storage)
         }
         switch type.heapType {
-        case .funcRef:
+        case .abstract(.funcRef):
             return .function(decodeOptionalInt())
-        case .externRef:
+        case .abstract(.externRef):
             return .extern(decodeOptionalInt())
+        case .concrete:
+            fatalError("heap type other than `func` and `extern` is not implemented yet")
         }
     }
 

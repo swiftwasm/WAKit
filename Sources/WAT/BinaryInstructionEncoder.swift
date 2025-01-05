@@ -23,7 +23,7 @@ protocol BinaryInstructionEncoder: InstructionVisitor {
     mutating func encodeImmediates(relativeDepth: UInt32) throws
     mutating func encodeImmediates(table: UInt32) throws
     mutating func encodeImmediates(targets: BrTable) throws
-    mutating func encodeImmediates(type: ReferenceType) throws
+    mutating func encodeImmediates(type: HeapType) throws
     mutating func encodeImmediates(type: ValueType) throws
     mutating func encodeImmediates(typeIndex: UInt32) throws
     mutating func encodeImmediates(value: IEEE754.Float32) throws
@@ -172,7 +172,7 @@ extension BinaryInstructionEncoder {
         try encodeInstruction([0x44])
         try encodeImmediates(value: value)
     }
-    mutating func visitRefNull(type: ReferenceType) throws {
+    mutating func visitRefNull(type: HeapType) throws {
         try encodeInstruction([0xD0])
         try encodeImmediates(type: type)
     }

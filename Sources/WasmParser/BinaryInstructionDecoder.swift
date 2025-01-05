@@ -59,7 +59,7 @@ protocol BinaryInstructionDecoder {
     /// Decode `f64.const` immediates
     @inlinable mutating func visitF64Const() throws -> IEEE754.Float64
     /// Decode `ref.null` immediates
-    @inlinable mutating func visitRefNull() throws -> ReferenceType
+    @inlinable mutating func visitRefNull() throws -> HeapType
     /// Decode `ref.func` immediates
     @inlinable mutating func visitRefFunc() throws -> UInt32
     /// Decode `memory.init` immediates

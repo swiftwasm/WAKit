@@ -21,7 +21,7 @@ extension Execution {
 extension Execution {
     mutating func refNull(sp: Sp, immediate: Instruction.RefNullOperand) {
         let value: Value
-        switch immediate.type.heapType {
+        switch immediate.type {
         case .externRef:
             value = .ref(.extern(nil))
         case .funcRef:

@@ -51,7 +51,7 @@
   ["mvp"                 , "i64.const"                , ["0x42"]        , [["value", "Int64"]]                               , null        ],
   ["mvp"                 , "f32.const"                , ["0x43"]        , [["value", "IEEE754.Float32"]]                     , null        ],
   ["mvp"                 , "f64.const"                , ["0x44"]        , [["value", "IEEE754.Float64"]]                     , null        ],
-  ["referenceTypes"      , "ref.null"                 , ["0xD0"]        , [["type", "ReferenceType"]]                        , null        ],
+  ["referenceTypes"      , "ref.null"                 , ["0xD0"]        , [["type", "HeapType"]]                             , null        ],
   ["referenceTypes"      , "ref.is_null"              , ["0xD1"]        , []                                                 , null        ],
   ["referenceTypes"      , "ref.func"                 , ["0xD2"]        , [["functionIndex", "UInt32"]]                      , null        ],
   ["mvp"                 , "i32.eqz"                  , ["0x45"]        , []                                                 , null        ],

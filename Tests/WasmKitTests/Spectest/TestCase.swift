@@ -268,8 +268,7 @@ extension WastRunContext {
             }
             return .passed
 
-        case .assertReturn(let execute, let results):
-            let expected = parseValues(args: results)
+        case .assertReturn(let execute, let expected):
             let actual = try wastExecute(execute: execute)
             guard actual.isTestEquivalent(to: expected) else {
                 return .failed("invoke result mismatch: expected: \(expected), actual: \(actual)")
@@ -346,7 +345,24 @@ extension WastRunContext {
         guard let function = instance.exportedFunction(name: call.name) else {
             throw SpectestError("function \(call.name) not exported")
         }
-        return try function.invoke(call.args)
+        let args = try call.args.map { arg -> Value in
+            switch arg {
+            case .i32(let value): return .i32(value)
+            case .i64(let value): return .i64(value)
+            case .f32(let value): return .f32(value)
+            case .f64(let value): return .f64(value)
+            case .refNull(let heapType):
+                switch heapType {
+                case .abstract(.funcRef): return .ref(.function(nil))
+                case .abstract(.externRef): return .ref(.extern(nil))
+                case .concrete:
+                    throw SpectestError("concrete ref.null is not supported yet")
+                }
+            case .refExtern(let value): return .ref(.extern(Int(value)))
+            case .refFunc(let value): return .ref(.function(Int(value)))
+            }
+        }
+        return try function.invoke(args)
     }
 
     private func deriveFeatureSet(rootPath: FilePath) -> WasmFeatureSet {
@@ -380,37 +396,36 @@ extension WastRunContext {
         let module = try parseWasm(bytes: binary, features: deriveFeatureSet(rootPath: rootPath))
         return module
     }
-
-    private func parseValues(args: [WastExpectValue]) -> [WasmKit.Value] {
-        return args.compactMap {
-            switch $0 {
-            case .value(let value): return value
-            case .f32CanonicalNaN, .f32ArithmeticNaN: return .f32(Float.nan.bitPattern)
-            case .f64CanonicalNaN, .f64ArithmeticNaN: return .f64(Double.nan.bitPattern)
-            }
-        }
-    }
 }
 
 extension Value {
-    func isTestEquivalent(to value: Self) -> Bool {
+    func isTestEquivalent(to value: WastExpectValue) -> Bool {
         switch (self, value) {
-        case let (.i32(lhs), .i32(rhs)):
+        case let (.i32(lhs), .value(.i32(rhs))):
             return lhs == rhs
-        case let (.i64(lhs), .i64(rhs)):
+        case let (.i64(lhs), .value(.i64(rhs))):
             return lhs == rhs
-        case let (.f32(lhs), .f32(rhs)):
+        case let (.f32(lhs), .value(.f32(rhs))):
             let lhs = Float32(bitPattern: lhs)
             let rhs = Float32(bitPattern: rhs)
             return lhs.isNaN && rhs.isNaN || lhs == rhs
-        case let (.f64(lhs), .f64(rhs)):
+        case let (.f64(lhs), .value(.f64(rhs))):
             let lhs = Float64(bitPattern: lhs)
             let rhs = Float64(bitPattern: rhs)
             return lhs.isNaN && rhs.isNaN || lhs == rhs
-        case let (.ref(.extern(lhs)), .ref(.extern(rhs))):
+        case let (.f64(lhs), .f64ArithmeticNaN),
+            let (.f64(lhs), .f64CanonicalNaN):
+            return Float64(bitPattern: lhs).isNaN
+        case let (.f32(lhs), .f32ArithmeticNaN),
+            let (.f32(lhs), .f32CanonicalNaN):
+            return Float32(bitPattern: lhs).isNaN
+        case let (.ref(.extern(lhs?)), .value(.refExtern(rhs))):
             return lhs == rhs
-        case let (.ref(.function(lhs)), .ref(.function(rhs))):
+        case let (.ref(.function(lhs?)), .value(.refFunc(rhs))):
             return lhs == rhs
+        case (.ref(.extern(nil)), .value(.refNull(.abstract(.externRef)))),
+            (.ref(.function(nil)), .value(.refNull(.abstract(.funcRef)))):
+            return true
         default:
             return false
         }
@@ -418,7 +433,7 @@ extension Value {
 }
 
 extension Array where Element == Value {
-    func isTestEquivalent(to arrayOfValues: Self) -> Bool {
+    func isTestEquivalent(to arrayOfValues: [WastExpectValue]) -> Bool {
         guard count == arrayOfValues.count else {
             return false
         }

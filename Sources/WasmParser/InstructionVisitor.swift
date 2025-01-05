@@ -205,7 +205,7 @@ public enum Instruction: Equatable {
     case `i64Const`(value: Int64)
     case `f32Const`(value: IEEE754.Float32)
     case `f64Const`(value: IEEE754.Float64)
-    case `refNull`(type: ReferenceType)
+    case `refNull`(type: HeapType)
     case `refIsNull`
     case `refFunc`(functionIndex: UInt32)
     case `i32Eqz`
@@ -271,7 +271,7 @@ extension AnyInstructionVisitor {
     public mutating func visitI64Const(value: Int64) throws { return try self.visit(.i64Const(value: value)) }
     public mutating func visitF32Const(value: IEEE754.Float32) throws { return try self.visit(.f32Const(value: value)) }
     public mutating func visitF64Const(value: IEEE754.Float64) throws { return try self.visit(.f64Const(value: value)) }
-    public mutating func visitRefNull(type: ReferenceType) throws { return try self.visit(.refNull(type: type)) }
+    public mutating func visitRefNull(type: HeapType) throws { return try self.visit(.refNull(type: type)) }
     public mutating func visitRefIsNull() throws { return try self.visit(.refIsNull) }
     public mutating func visitRefFunc(functionIndex: UInt32) throws { return try self.visit(.refFunc(functionIndex: functionIndex)) }
     public mutating func visitI32Eqz() throws { return try self.visit(.i32Eqz) }
@@ -367,7 +367,7 @@ public protocol InstructionVisitor {
     /// Visiting `f64.const` instruction.
     mutating func visitF64Const(value: IEEE754.Float64) throws
     /// Visiting `ref.null` instruction.
-    mutating func visitRefNull(type: ReferenceType) throws
+    mutating func visitRefNull(type: HeapType) throws
     /// Visiting `ref.is_null` instruction.
     mutating func visitRefIsNull() throws
     /// Visiting `ref.func` instruction.
@@ -518,7 +518,7 @@ extension InstructionVisitor {
     public mutating func visitI64Const(value: Int64) throws {}
     public mutating func visitF32Const(value: IEEE754.Float32) throws {}
     public mutating func visitF64Const(value: IEEE754.Float64) throws {}
-    public mutating func visitRefNull(type: ReferenceType) throws {}
+    public mutating func visitRefNull(type: HeapType) throws {}
     public mutating func visitRefIsNull() throws {}
     public mutating func visitRefFunc(functionIndex: UInt32) throws {}
     public mutating func visitI32Eqz() throws {}

@@ -111,6 +111,8 @@ internal struct Parser {
         return String(decoding: bytes, as: UTF8.self)
     }
 
+    /// Parse a `u32` raw index or a symbolic `id` identifier.
+    /// https://webassembly.github.io/function-references/core/text/modules.html#indices
     mutating func takeIndexOrId() throws -> IndexOrId? {
         let location = lexer.location()
         if let index: UInt32 = try takeUnsignedInt() {

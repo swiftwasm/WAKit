@@ -256,6 +256,11 @@ extension WasmParserError.Message {
         Self("malformed section id: \(id)")
     }
 
+    @usableFromInline
+    static func malformedValueType(_ byte: UInt8) -> Self {
+        Self("malformed value type: \(byte)")
+    }
+
     @usableFromInline static func zeroExpected(actual: UInt8) -> Self {
         Self("Zero expected but got \(actual)")
     }
@@ -443,11 +448,42 @@ extension Parser {
         case 0x7D: return .f32
         case 0x7C: return .f64
         case 0x7B: return .f64
-        case 0x70: return .ref(.funcRef)
-        case 0x71: return .ref(.funcRef)
-        case 0x6F: return .ref(.externRef)
         default:
-            throw StreamError<Stream.Element>.unexpected(b, index: offset, expected: Set(0x7C...0x7F))
+            guard let refType = try parseReferenceType(byte: b) else {
+                throw makeError(.malformedValueType(b))
+            }
+            return .ref(refType)
+        }
+    }
+
+    /// - Returns: `nil` if the given `byte` discriminator is malformed
+    /// > Note:
+    /// <https://webassembly.github.io/function-references/core/binary/types.html#reference-types>
+    @usableFromInline
+    func parseReferenceType(byte: UInt8) throws -> ReferenceType? {
+        switch byte {
+        case 0x63: return try ReferenceType(isNullable: true, heapType: parseHeapType())
+        case 0x64: return try ReferenceType(isNullable: false, heapType: parseHeapType())
+        case 0x6F: return .externRef
+        case 0x70: return .funcRef
+        default: return nil  // invalid discriminator
+        }
+    }
+
+    /// > Note:
+    /// <https://webassembly.github.io/function-references/core/binary/types.html#heap-types>
+    @usableFromInline
+    func parseHeapType() throws -> HeapType {
+        let b = try stream.consumeAny()
+        switch b {
+        case 0x6F: return .externRef
+        case 0x70: return .funcRef
+        default:
+            let rawIndex = try stream.parseVarSigned33()
+            guard let index = TypeIndex(exactly: rawIndex) else {
+                throw makeError(.invalidFunctionType(rawIndex))
+            }
+            return .concrete(typeIndex: index)
         }
     }
 
@@ -689,12 +725,8 @@ extension Parser: BinaryInstructionDecoder {
         let n = try parseDouble()
         return IEEE754.Float64(bitPattern: n)
     }
-    @inlinable mutating func visitRefNull() throws -> WasmTypes.ReferenceType {
-        let type = try parseValueType()
-        guard case let .ref(refType) = type else {
-            throw makeError(.expectedRefType(actual: type))
-        }
-        return refType
+    @inlinable mutating func visitRefNull() throws -> WasmTypes.HeapType {
+        return try parseHeapType()
     }
     @inlinable mutating func visitBrOnNull() throws -> UInt32 {
         return 0

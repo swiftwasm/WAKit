@@ -361,15 +361,17 @@ struct ExpressionParser<Visitor: InstructionVisitor> {
         return UInt32(index)
     }
 
-    private mutating func refKind() throws -> ReferenceType {
-        if try parser.take(.id) {
-            return .funcRef  // not sure about this.
-        } else if try parser.takeKeyword("func") {
+    /// https://webassembly.github.io/function-references/core/text/types.html#text-heaptype
+    private mutating func heapType(wat: inout Wat) throws -> HeapType {
+        if try parser.takeKeyword("func") {
             return .funcRef
         } else if try parser.takeKeyword("extern") {
             return .externRef
+        } else if let id = try parser.takeIndexOrId() {
+            let (decl, index) = try wat.types.resolve(use: id)
+            return .concrete(typeIndex: UInt32(index))
         }
-        throw WatParserError("expected \"func\" or \"extern\"", location: parser.lexer.location())
+        throw WatParserError("expected \"func\", \"extern\" or type index", location: parser.lexer.location())
     }
 
     private mutating func memArg(defaultAlign: UInt32) throws -> MemArg {
@@ -513,8 +515,8 @@ extension ExpressionParser {
     mutating func visitF64Const(wat: inout Wat) throws -> IEEE754.Float64 {
         return try parser.expectFloat64()
     }
-    mutating func visitRefNull(wat: inout Wat) throws -> ReferenceType {
-        return try refKind()
+    mutating func visitRefNull(wat: inout Wat) throws -> HeapType {
+        return try heapType(wat: &wat)
     }
     mutating func visitRefFunc(wat: inout Wat) throws -> UInt32 {
         return try functionIndex(wat: &wat)

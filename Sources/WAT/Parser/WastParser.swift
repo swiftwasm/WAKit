@@ -54,31 +54,25 @@ struct WastParser {
     }
 
     struct ConstExpressionCollector: WastConstInstructionVisitor {
-        let addValue: (Value) -> Void
+        let addValue: (WastConstValue) -> Void
 
         mutating func visitI32Const(value: Int32) throws { addValue(.i32(UInt32(bitPattern: value))) }
         mutating func visitI64Const(value: Int64) throws { addValue(.i64(UInt64(bitPattern: value))) }
         mutating func visitF32Const(value: IEEE754.Float32) throws { addValue(.f32(value.bitPattern)) }
         mutating func visitF64Const(value: IEEE754.Float64) throws { addValue(.f64(value.bitPattern)) }
         mutating func visitRefFunc(functionIndex: UInt32) throws {
-            addValue(.ref(.function(FunctionAddress(functionIndex))))
+            addValue(.refFunc(functionIndex: functionIndex))
         }
-        mutating func visitRefNull(type: ReferenceType) throws {
-            let value: Reference
-            switch type.heapType {
-            case .externRef: value = .extern(nil)
-            case .funcRef: value = .function(nil)
-            }
-            addValue(.ref(value))
+        mutating func visitRefNull(type: HeapType) throws {
+            addValue(.refNull(type))
         }
-
-        mutating func visitRefExtern(value: UInt32) throws {
-            addValue(.ref(.extern(ExternAddress(value))))
+        func visitRefExtern(value: UInt32) throws {
+            addValue(.refExtern(value: value))
         }
     }
 
-    mutating func constExpression() throws -> [Value] {
-        var values: [Value] = []
+    mutating func argumentValues() throws -> [WastConstValue] {
+        var values: [WastConstValue] = []
         var collector = ConstExpressionCollector(addValue: { values.append($0) })
         var exprParser = ExpressionParser<ConstExpressionCollector>(lexer: parser.lexer, features: features)
         while try exprParser.parseWastConstInstruction(visitor: &collector) {}
@@ -137,16 +131,26 @@ public enum WastExecute {
     }
 }
 
+public enum WastConstValue {
+    case i32(UInt32)
+    case i64(UInt64)
+    case f32(UInt32)
+    case f64(UInt64)
+    case refNull(HeapType)
+    case refFunc(functionIndex: UInt32)
+    case refExtern(value: UInt32)
+}
+
 public struct WastInvoke {
     public let module: String?
     public let name: String
-    public let args: [Value]
+    public let args: [WastConstValue]
 
     static func parse(wastParser: inout WastParser) throws -> WastInvoke {
         try wastParser.parser.expectKeyword("invoke")
         let module = try wastParser.parser.takeId()
         let name = try wastParser.parser.expectString()
-        let args = try wastParser.constExpression()
+        let args = try wastParser.argumentValues()
         try wastParser.parser.expect(.rightParen)
         let invoke = WastInvoke(module: module?.value, name: name, args: args)
         return invoke
@@ -155,7 +159,7 @@ public struct WastInvoke {
 
 public enum WastExpectValue {
     /// A concrete value that is expected to be returned.
-    case value(Value)
+    case value(WastConstValue)
     /// A value that is expected to be a canonical NaN.
     /// Corresponds to `f32.const nan:canonical` in WAST.
     case f32CanonicalNaN

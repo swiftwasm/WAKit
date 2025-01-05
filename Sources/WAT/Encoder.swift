@@ -120,16 +120,33 @@ extension ValueType: WasmEncodable {
         case .f32: encoder.output.append(0x7D)
         case .f64: encoder.output.append(0x7C)
         case .v128: encoder.output.append(0x7B)
-        case .ref(let refType): refType.encode(to: &encoder)
+        case .ref(let refType): encoder.encode(refType)
         }
     }
 }
 
 extension ReferenceType: WasmEncodable {
     func encode(to encoder: inout Encoder) {
-        switch self.heapType {
-        case .funcRef: encoder.output.append(isNullable ? 0x70 : 0x71)
-        case .externRef: encoder.output.append(0x6F)
+        switch (isNullable, heapType) {
+        // Use short form when available
+        case (true, .externRef): encoder.output.append(0x6F)
+        case (true, .funcRef): encoder.output.append(0x70)
+        default:
+            encoder.output.append(isNullable ? 0x63 : 0x64)
+            encoder.encode(heapType)
+        }
+    }
+}
+
+extension HeapType: WasmEncodable {
+    func encode(to encoder: inout Encoder) {
+        switch self {
+        case .abstract(.externRef): encoder.output.append(0x6F)
+        case .abstract(.funcRef): encoder.output.append(0x70)
+        case .concrete(let typeIndex):
+            // Note that the typeIndex is decoded as s33,
+            // so we need to encode it as signed.
+            encoder.writeSignedLEB128(Int64(typeIndex))
         }
     }
 }
@@ -511,7 +528,7 @@ struct ExpressionEncoder: BinaryInstructionEncoder {
         encodeUnsigned(targets.defaultIndex)
     }
     mutating func encodeImmediates(type: WasmTypes.ValueType) throws { encoder.encode(type) }
-    mutating func encodeImmediates(type: WasmTypes.ReferenceType) throws { encoder.encode(type) }
+    mutating func encodeImmediates(type: WasmTypes.HeapType) throws { encoder.encode(type) }
     mutating func encodeImmediates(value: Int32) throws { encodeSigned(value) }
     mutating func encodeImmediates(value: Int64) throws { encodeSigned(value) }
     mutating func encodeImmediates(value: WasmParser.IEEE754.Float32) throws { encodeFixedWidth(value.bitPattern) }
