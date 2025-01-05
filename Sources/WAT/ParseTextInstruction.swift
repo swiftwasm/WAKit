@@ -333,18 +333,18 @@ func parseTextInstruction<V: InstructionVisitor>(keyword: String, expressionPars
     case "i64.trunc_sat_f64_s": return { return try $0.visitConversion(.i64TruncSatF64S) }
     case "i64.trunc_sat_f64_u": return { return try $0.visitConversion(.i64TruncSatF64U) }
     case "call_ref":
-        let (functionIndex) = try expressionParser.visitCallRef(wat: &wat)
-        return { return try $0.visitCallRef(functionIndex: functionIndex) }
+        let (typeIndex) = try expressionParser.visitCallRef(wat: &wat)
+        return { return try $0.visitCallRef(typeIndex: typeIndex) }
     case "return_call_ref":
-        let (functionIndex) = try expressionParser.visitReturnCallRef(wat: &wat)
-        return { return try $0.visitReturnCallRef(functionIndex: functionIndex) }
+        let (typeIndex) = try expressionParser.visitReturnCallRef(wat: &wat)
+        return { return try $0.visitReturnCallRef(typeIndex: typeIndex) }
     case "as_non_null": return { return try $0.visitAsNonNull() }
     case "br_on_null":
-        let (functionIndex) = try expressionParser.visitBrOnNull(wat: &wat)
-        return { return try $0.visitBrOnNull(functionIndex: functionIndex) }
+        let (relativeDepth) = try expressionParser.visitBrOnNull(wat: &wat)
+        return { return try $0.visitBrOnNull(relativeDepth: relativeDepth) }
     case "br_on_non_null":
-        let (functionIndex) = try expressionParser.visitBrOnNonNull(wat: &wat)
-        return { return try $0.visitBrOnNonNull(functionIndex: functionIndex) }
+        let (relativeDepth) = try expressionParser.visitBrOnNonNull(wat: &wat)
+        return { return try $0.visitBrOnNonNull(relativeDepth: relativeDepth) }
     default: return nil
     }
 }

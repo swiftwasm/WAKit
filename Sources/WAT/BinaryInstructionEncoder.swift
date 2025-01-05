@@ -25,6 +25,7 @@ protocol BinaryInstructionEncoder: InstructionVisitor {
     mutating func encodeImmediates(targets: BrTable) throws
     mutating func encodeImmediates(type: ReferenceType) throws
     mutating func encodeImmediates(type: ValueType) throws
+    mutating func encodeImmediates(typeIndex: UInt32) throws
     mutating func encodeImmediates(value: IEEE754.Float32) throws
     mutating func encodeImmediates(value: IEEE754.Float64) throws
     mutating func encodeImmediates(value: Int32) throws
@@ -392,21 +393,21 @@ extension BinaryInstructionEncoder {
         try encodeInstruction([0xFC, 0x10])
         try encodeImmediates(table: table)
     }
-    mutating func visitCallRef(functionIndex: UInt32) throws {
+    mutating func visitCallRef(typeIndex: UInt32) throws {
         try encodeInstruction([0x14])
-        try encodeImmediates(functionIndex: functionIndex)
+        try encodeImmediates(typeIndex: typeIndex)
     }
-    mutating func visitReturnCallRef(functionIndex: UInt32) throws {
+    mutating func visitReturnCallRef(typeIndex: UInt32) throws {
         try encodeInstruction([0x15])
-        try encodeImmediates(functionIndex: functionIndex)
+        try encodeImmediates(typeIndex: typeIndex)
     }
     mutating func visitAsNonNull() throws { try encodeInstruction([0xD4]) }
-    mutating func visitBrOnNull(functionIndex: UInt32) throws {
+    mutating func visitBrOnNull(relativeDepth: UInt32) throws {
         try encodeInstruction([0xD5])
-        try encodeImmediates(functionIndex: functionIndex)
+        try encodeImmediates(relativeDepth: relativeDepth)
     }
-    mutating func visitBrOnNonNull(functionIndex: UInt32) throws {
+    mutating func visitBrOnNonNull(relativeDepth: UInt32) throws {
         try encodeInstruction([0xD6])
-        try encodeImmediates(functionIndex: functionIndex)
+        try encodeImmediates(relativeDepth: relativeDepth)
     }
 }

@@ -226,11 +226,11 @@ public enum Instruction: Equatable {
     case `tableSet`(table: UInt32)
     case `tableGrow`(table: UInt32)
     case `tableSize`(table: UInt32)
-    case `callRef`(functionIndex: UInt32)
-    case `returnCallRef`(functionIndex: UInt32)
+    case `callRef`(typeIndex: UInt32)
+    case `returnCallRef`(typeIndex: UInt32)
     case `asNonNull`
-    case `brOnNull`(functionIndex: UInt32)
-    case `brOnNonNull`(functionIndex: UInt32)
+    case `brOnNull`(relativeDepth: UInt32)
+    case `brOnNonNull`(relativeDepth: UInt32)
 }
 
 /// A visitor that visits all instructions by a single visit method.
@@ -292,11 +292,11 @@ extension AnyInstructionVisitor {
     public mutating func visitTableSet(table: UInt32) throws { return try self.visit(.tableSet(table: table)) }
     public mutating func visitTableGrow(table: UInt32) throws { return try self.visit(.tableGrow(table: table)) }
     public mutating func visitTableSize(table: UInt32) throws { return try self.visit(.tableSize(table: table)) }
-    public mutating func visitCallRef(functionIndex: UInt32) throws { return try self.visit(.callRef(functionIndex: functionIndex)) }
-    public mutating func visitReturnCallRef(functionIndex: UInt32) throws { return try self.visit(.returnCallRef(functionIndex: functionIndex)) }
+    public mutating func visitCallRef(typeIndex: UInt32) throws { return try self.visit(.callRef(typeIndex: typeIndex)) }
+    public mutating func visitReturnCallRef(typeIndex: UInt32) throws { return try self.visit(.returnCallRef(typeIndex: typeIndex)) }
     public mutating func visitAsNonNull() throws { return try self.visit(.asNonNull) }
-    public mutating func visitBrOnNull(functionIndex: UInt32) throws { return try self.visit(.brOnNull(functionIndex: functionIndex)) }
-    public mutating func visitBrOnNonNull(functionIndex: UInt32) throws { return try self.visit(.brOnNonNull(functionIndex: functionIndex)) }
+    public mutating func visitBrOnNull(relativeDepth: UInt32) throws { return try self.visit(.brOnNull(relativeDepth: relativeDepth)) }
+    public mutating func visitBrOnNonNull(relativeDepth: UInt32) throws { return try self.visit(.brOnNonNull(relativeDepth: relativeDepth)) }
 }
 
 /// A visitor for WebAssembly instructions.
@@ -409,15 +409,15 @@ public protocol InstructionVisitor {
     /// Visiting `table.size` instruction.
     mutating func visitTableSize(table: UInt32) throws
     /// Visiting `call_ref` instruction.
-    mutating func visitCallRef(functionIndex: UInt32) throws
+    mutating func visitCallRef(typeIndex: UInt32) throws
     /// Visiting `return_call_ref` instruction.
-    mutating func visitReturnCallRef(functionIndex: UInt32) throws
+    mutating func visitReturnCallRef(typeIndex: UInt32) throws
     /// Visiting `as_non_null` instruction.
     mutating func visitAsNonNull() throws
     /// Visiting `br_on_null` instruction.
-    mutating func visitBrOnNull(functionIndex: UInt32) throws
+    mutating func visitBrOnNull(relativeDepth: UInt32) throws
     /// Visiting `br_on_non_null` instruction.
-    mutating func visitBrOnNonNull(functionIndex: UInt32) throws
+    mutating func visitBrOnNonNull(relativeDepth: UInt32) throws
 }
 
 extension InstructionVisitor {
@@ -476,11 +476,11 @@ extension InstructionVisitor {
         case let .tableSet(table): return try visitTableSet(table: table)
         case let .tableGrow(table): return try visitTableGrow(table: table)
         case let .tableSize(table): return try visitTableSize(table: table)
-        case let .callRef(functionIndex): return try visitCallRef(functionIndex: functionIndex)
-        case let .returnCallRef(functionIndex): return try visitReturnCallRef(functionIndex: functionIndex)
+        case let .callRef(typeIndex): return try visitCallRef(typeIndex: typeIndex)
+        case let .returnCallRef(typeIndex): return try visitReturnCallRef(typeIndex: typeIndex)
         case .asNonNull: return try visitAsNonNull()
-        case let .brOnNull(functionIndex): return try visitBrOnNull(functionIndex: functionIndex)
-        case let .brOnNonNull(functionIndex): return try visitBrOnNonNull(functionIndex: functionIndex)
+        case let .brOnNull(relativeDepth): return try visitBrOnNull(relativeDepth: relativeDepth)
+        case let .brOnNonNull(relativeDepth): return try visitBrOnNonNull(relativeDepth: relativeDepth)
         }
     }
 }
@@ -539,10 +539,10 @@ extension InstructionVisitor {
     public mutating func visitTableSet(table: UInt32) throws {}
     public mutating func visitTableGrow(table: UInt32) throws {}
     public mutating func visitTableSize(table: UInt32) throws {}
-    public mutating func visitCallRef(functionIndex: UInt32) throws {}
-    public mutating func visitReturnCallRef(functionIndex: UInt32) throws {}
+    public mutating func visitCallRef(typeIndex: UInt32) throws {}
+    public mutating func visitReturnCallRef(typeIndex: UInt32) throws {}
     public mutating func visitAsNonNull() throws {}
-    public mutating func visitBrOnNull(functionIndex: UInt32) throws {}
-    public mutating func visitBrOnNonNull(functionIndex: UInt32) throws {}
+    public mutating func visitBrOnNull(relativeDepth: UInt32) throws {}
+    public mutating func visitBrOnNonNull(relativeDepth: UInt32) throws {}
 }
 
