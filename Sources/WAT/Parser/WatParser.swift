@@ -238,7 +238,7 @@ struct WatParser {
             var inlineElement: ElementDecl?
             let isMemory64 = try expectAddressSpaceType()
 
-            if let refType = try maybeRefType() {
+            if let refType = try takeRefType() {
                 guard try parser.takeParenBlockStart("elem") else {
                     throw WatParserError("expected elem", location: parser.lexer.location())
                 }
@@ -373,7 +373,7 @@ struct WatParser {
             //            | funcidx* (iff the tableuse is omitted)
             let indices: ElementDecl.Indices
             let type: ReferenceType
-            if let refType = try maybeRefType() {
+            if let refType = try takeRefType() {
                 indices = .elementExprList(parser.lexer)
                 type = refType
             } else if try parser.takeKeyword("func") || table == nil {
@@ -606,70 +606,56 @@ struct WatParser {
     }
 
     mutating func valueType() throws -> ValueType {
-        if try parser.peek(.leftParen) != nil {
-            return try _referenceValueType()
+        if try parser.takeKeyword("i32") {
+            return .i32
+        } else if try parser.takeKeyword("i64") {
+            return .i64
+        } else if try parser.takeKeyword("f32") {
+            return .f32
+        } else if try parser.takeKeyword("f64") {
+            return .f64
+        } else if let refType = try takeRefType() {
+            return .ref(refType)
         } else {
-            return try _valueType()
-        }
-    }
-
-    // must consume right paren
-    mutating func _referenceValueType() throws -> ValueType {
-        var isNullable = false
-        _ = try parser.takeParenBlockStart("ref")
-        if try parser.peekKeyword() == "null" {
-            _ = try parser.takeKeyword("null")
-            isNullable = true
-        }
-
-        if try parser.takeId() != nil {
-            _ = try parser.take(.rightParen)
-            return .ref(refType(keyword: "func", isNullable: isNullable)!)
-        }
-
-        let keyword = try parser.expectKeyword()
-        _ = try parser.take(.rightParen)
-        if let refType = refType(keyword: keyword, isNullable: isNullable) { return .ref(refType) }
-        throw WatParserError("unexpected value type \(keyword)", location: parser.lexer.location())
-    }
-
-    mutating func _valueType() throws -> ValueType {
-        let keyword = try parser.expectKeyword()
-        switch keyword {
-        case "i32": return .i32
-        case "i64": return .i64
-        case "f32": return .f32
-        case "f64": return .f64
-        default:
-            if let refType = refType(keyword: keyword, isNullable: true) { return .ref(refType) }
-            throw WatParserError("unexpected value type \(keyword)", location: parser.lexer.location())
-        }
-    }
-
-    mutating func refType(keyword: String, isNullable: Bool) -> ReferenceType? {
-        switch keyword {
-        case "funcref": return .funcRef
-        case "externref": return .externRef
-        case "func": return ReferenceType(isNullable: isNullable, heapType: .funcRef)
-        case "extern": return ReferenceType(isNullable: isNullable, heapType: .funcRef)
-        default: return nil
+            throw WatParserError("expected value type", location: parser.lexer.location())
         }
     }
 
     mutating func refType() throws -> ReferenceType {
-        let keyword = try parser.expectKeyword()
-        guard let refType = refType(keyword: keyword, isNullable: true) else {
-            throw WatParserError("unexpected ref type \(keyword)", location: parser.lexer.location())
+        guard let refType = try takeRefType() else {
+            throw WatParserError("expected reference type", location: parser.lexer.location())
         }
         return refType
     }
 
-    mutating func maybeRefType() throws -> ReferenceType? {
+    /// Parse a reference type tokens if the head tokens seems like so.
+    mutating func takeRefType() throws -> ReferenceType? {
+        // Check abbreviations first
+        // https://webassembly.github.io/function-references/core/text/types.html#abbreviations
         if try parser.takeKeyword("funcref") {
             return .funcRef
         } else if try parser.takeKeyword("externref") {
             return .externRef
+        } else if try parser.takeParenBlockStart("ref") {
+            let isNullable = try parser.takeKeyword("null")
+            let heapType = try heapType()
+            try parser.expect(.rightParen)
+            return ReferenceType(isNullable: isNullable, heapType: heapType)
         }
         return nil
+    }
+
+    /// > Note:
+    /// <https://webassembly.github.io/function-references/core/text/types.html#heap-types>
+    mutating func heapType() throws -> HeapType {
+        if try parser.takeKeyword("func") {
+            return .abstract(.funcRef)
+        } else if try parser.takeKeyword("extern") {
+            return .abstract(.externRef)
+        } else if try parser.takeIndexOrId() != nil {
+            // TODO: Implement (ref $t)
+            throw WatParserError("concrete heap type is not supported yet", location: parser.lexer.location())
+        }
+        throw WatParserError("expected heap type", location: parser.lexer.location())
     }
 }

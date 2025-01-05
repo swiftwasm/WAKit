@@ -73,8 +73,8 @@ final class SpectestTests: XCTestCase {
             configuration: defaultConfig
         )
 
-        XCTAssertEqual(result.passed, 1400)
-        XCTAssertEqual(result.failed, 134)
+        XCTAssertEqual(result.passed, 1228)
+        XCTAssertEqual(result.failed, 49)
         XCTAssertEqual(
             result.sortedFailedCases(),
             [
