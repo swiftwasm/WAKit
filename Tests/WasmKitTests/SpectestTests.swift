@@ -57,8 +57,8 @@ final class SpectestTests: XCTestCase {
             configuration: defaultConfig
         )
 
-        XCTAssertEqual(result.passed, 8)
-        XCTAssertEqual(result.failed, 26)
+        XCTAssertEqual(result.passed, 7)
+        XCTAssertEqual(result.failed, 27)
     }
 
     /// Run the garbage collection proposal tests
@@ -73,8 +73,8 @@ final class SpectestTests: XCTestCase {
             configuration: defaultConfig
         )
 
-        XCTAssertEqual(result.passed, 1228)
-        XCTAssertEqual(result.failed, 49)
+        XCTAssertEqual(result.passed, 1552)
+        XCTAssertEqual(result.failed, 368)
         XCTAssertEqual(
             result.sortedFailedCases(),
             [
@@ -83,7 +83,6 @@ final class SpectestTests: XCTestCase {
                 "gc/array_fill.wast",
                 "gc/array_init_data.wast",
                 "gc/array_init_elem.wast",
-                "gc/br_if.wast",
                 "gc/br_on_cast.wast",
                 "gc/br_on_cast_fail.wast",
                 "gc/br_on_non_null.wast",
@@ -98,7 +97,6 @@ final class SpectestTests: XCTestCase {
                 "gc/i31.wast",
                 "gc/linking.wast",
                 "gc/local_init.wast",
-                "gc/local_tee.wast",
                 "gc/ref.wast",
                 "gc/ref_as_non_null.wast",
                 "gc/ref_cast.wast",
@@ -107,7 +105,6 @@ final class SpectestTests: XCTestCase {
                 "gc/ref_null.wast",
                 "gc/ref_test.wast",
                 "gc/return_call_ref.wast",
-                "gc/select.wast",
                 "gc/struct.wast",
                 "gc/table-sub.wast",
                 "gc/table.wast",
