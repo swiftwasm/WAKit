@@ -401,15 +401,15 @@ extension WastRunContext {
 extension Value {
     func isTestEquivalent(to value: WastExpectValue) -> Bool {
         switch (self, value) {
-        case let (.i32(lhs), .value(.i32(rhs))):
+        case let (.i32(lhs), .i32(rhs)):
             return lhs == rhs
-        case let (.i64(lhs), .value(.i64(rhs))):
+        case let (.i64(lhs), .i64(rhs)):
             return lhs == rhs
-        case let (.f32(lhs), .value(.f32(rhs))):
+        case let (.f32(lhs), .f32(rhs)):
             let lhs = Float32(bitPattern: lhs)
             let rhs = Float32(bitPattern: rhs)
             return lhs.isNaN && rhs.isNaN || lhs == rhs
-        case let (.f64(lhs), .value(.f64(rhs))):
+        case let (.f64(lhs), .f64(rhs)):
             let lhs = Float64(bitPattern: lhs)
             let rhs = Float64(bitPattern: rhs)
             return lhs.isNaN && rhs.isNaN || lhs == rhs
@@ -419,12 +419,12 @@ extension Value {
         case let (.f32(lhs), .f32ArithmeticNaN),
             let (.f32(lhs), .f32CanonicalNaN):
             return Float32(bitPattern: lhs).isNaN
-        case let (.ref(.extern(lhs?)), .value(.refExtern(rhs))):
-            return lhs == rhs
-        case let (.ref(.function(lhs?)), .value(.refFunc(rhs))):
-            return lhs == rhs
-        case (.ref(.extern(nil)), .value(.refNull(.abstract(.externRef)))),
-            (.ref(.function(nil)), .value(.refNull(.abstract(.funcRef)))):
+        case let (.ref(.extern(lhs?)), .refExtern(rhs)):
+            return rhs.map { lhs == $0 } ?? true
+        case let (.ref(.function(lhs?)), .refFunc(rhs)):
+            return rhs.map { lhs == $0 } ?? true
+        case (.ref(.extern(nil)), .refNull(.abstract(.externRef))),
+            (.ref(.function(nil)), .refNull(.abstract(.funcRef))):
             return true
         default:
             return false

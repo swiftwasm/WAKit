@@ -46,6 +46,13 @@ struct WatParser {
             self.make = { _ in value }
         }
 
+        func project<U>(_ keyPath: KeyPath<T, U>) -> UnresolvedType<U> {
+            return UnresolvedType<U> {
+                let parent = try make($0)
+                return parent[keyPath: keyPath]
+            }
+        }
+
         func map<U>(_ transform: @escaping (T) -> U) -> UnresolvedType<U> {
             return UnresolvedType<U>(make: { try transform(resolve($0)) })
         }
@@ -267,6 +274,17 @@ struct WatParser {
             var inlineElement: ElementDecl?
             let isMemory64 = try expectAddressSpaceType()
 
+            // elemexpr ::= '(' 'item' expr ')' | '(' instr ')'
+            func parseExprList() throws -> (UInt64, ElementDecl.Indices) {
+                var numberOfItems: UInt64 = 0
+                let indices: ElementDecl.Indices = .elementExprList(parser.lexer)
+                while try parser.take(.leftParen) {
+                    numberOfItems += 1
+                    try parser.skipParenBlock()
+                }
+                return (numberOfItems, indices)
+            }
+
             if let refType = try takeRefType() {
                 guard try parser.takeParenBlockStart("elem") else {
                     throw WatParserError("expected elem", location: parser.lexer.location())
@@ -274,12 +292,7 @@ struct WatParser {
                 var numberOfItems: UInt64 = 0
                 let indices: ElementDecl.Indices
                 if try parser.peek(.leftParen) != nil {
-                    // elemexpr ::= '(' 'item' expr ')' | '(' instr ')'
-                    indices = .elementExprList(parser.lexer)
-                    while try parser.take(.leftParen) {
-                        numberOfItems += 1
-                        try parser.skipParenBlock()
-                    }
+                    (numberOfItems, indices) = try parseExprList()
                 } else {
                     // Consume function indices
                     indices = .functionList(parser.lexer)
@@ -302,7 +315,19 @@ struct WatParser {
                     )
                 }
             } else {
-                type = try tableType(isMemory64: isMemory64)
+                var tableType = try tableType(isMemory64: isMemory64)
+                if try parser.peek(.leftParen) != nil {
+                    let (numberOfItems, indices) = try parseExprList()
+                    inlineElement = ElementDecl(
+                        mode: .inline, type: tableType.project(\.elementType), indices: indices
+                    )
+                    tableType = tableType.map {
+                        var value = $0
+                        value.limits.min = numberOfItems
+                        return value
+                    }
+                }
+                type = tableType
             }
             kind = .table(
                 TableDecl(

@@ -16,13 +16,19 @@ enum Spectest {
         testsuitePath.appendingPathComponent(file)
     }
 
-    static func wastFiles(include: [String] = [], exclude: [String] = ["annotations.wast"]) -> AnyIterator<URL> {
-        var allFiles = [
-            testsuitePath,
-            testsuitePath.appendingPathComponent("proposals/memory64"),
-            testsuitePath.appendingPathComponent("proposals/tail-call"),
-            rootDirectory.appendingPathComponent("Tests/WasmKitTests/ExtraSuite"),
-        ].flatMap {
+    static let defaultSuites = [
+        testsuitePath,
+        testsuitePath.appendingPathComponent("proposals/memory64"),
+        testsuitePath.appendingPathComponent("proposals/tail-call"),
+        rootDirectory.appendingPathComponent("Tests/WasmKitTests/ExtraSuite"),
+    ]
+
+    static func wastFiles(
+        path: [URL] = defaultSuites,
+        include: [String] = [],
+        exclude: [String] = ["annotations.wast"]
+    ) -> AnyIterator<URL> {
+        var allFiles = path.flatMap {
             try! FileManager.default.contentsOfDirectory(at: $0, includingPropertiesForKeys: nil)
         }.makeIterator()
 

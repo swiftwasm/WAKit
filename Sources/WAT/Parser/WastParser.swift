@@ -82,7 +82,19 @@ struct WastParser {
 
     mutating func expectationValues() throws -> [WastExpectValue] {
         var values: [WastExpectValue] = []
-        var collector = ConstExpressionCollector(addValue: { values.append(.value($0)) })
+        var collector = ConstExpressionCollector(addValue: {
+            let value: WastExpectValue
+            switch $0 {
+            case .i32(let v): value = .i32(v)
+            case .i64(let v): value = .i64(v)
+            case .f32(let v): value = .f32(v)
+            case .f64(let v): value = .f64(v)
+            case .refNull(let heapTy): value = .refNull(heapTy)
+            case .refFunc(let index): value = .refFunc(functionIndex: index)
+            case .refExtern(let v): value = .refExtern(value: v)
+            }
+            values.append(value)
+        })
         var exprParser = ExpressionParser<ConstExpressionCollector>(lexer: parser.lexer, features: features)
         while true {
             if let expectValue = try exprParser.parseWastExpectValue() {
@@ -158,8 +170,20 @@ public struct WastInvoke {
 }
 
 public enum WastExpectValue {
-    /// A concrete value that is expected to be returned.
-    case value(WastConstValue)
+    case i32(UInt32)
+    case i64(UInt64)
+    case f32(UInt32)
+    case f64(UInt64)
+
+    /// A value that is expected to be a null reference,
+    /// optionally with a specific type.
+    case refNull(HeapType?)
+    /// A value that is expected to be a non-null reference
+    /// to a function, optionally with a specific index.
+    case refFunc(functionIndex: UInt32?)
+    /// A value that is expected to be a non-null reference
+    /// to an extern, optionally with a specific value.
+    case refExtern(value: UInt32?)
     /// A value that is expected to be a canonical NaN.
     /// Corresponds to `f32.const nan:canonical` in WAST.
     case f32CanonicalNaN

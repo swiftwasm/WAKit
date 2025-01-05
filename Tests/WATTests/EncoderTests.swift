@@ -11,6 +11,28 @@ class EncoderTests: XCTestCase {
         var failed: Set<String> = []
     }
 
+    private func checkMalformed(wast: URL, module: ModuleDirective, message: String, recordFail: () -> Void) {
+        let diagnostic = {
+            let (line, column) = module.location.computeLineAndColumn()
+            return "\(wast.path):\(line):\(column) should be malformed: \(message)"
+        }
+        switch module.source {
+        case .text(var wat):
+            XCTAssertThrowsError(
+                try {
+                    _ = try wat.encode()
+                    recordFail()
+                }(), diagnostic())
+        case .quote(let bytes):
+            XCTAssertThrowsError(
+                try {
+                    _ = try wat2wasm(String(decoding: bytes, as: UTF8.self))
+                    recordFail()
+                }(), diagnostic())
+        case .binary: break
+        }
+    }
+
     func checkWabtCompatibility(
         wast: URL, json: URL, stats parentStats: inout CompatibilityTestStats
     ) throws {
@@ -35,25 +57,7 @@ class EncoderTests: XCTestCase {
             case .module(let moduleDirective):
                 watModules.append(moduleDirective)
             case .assertMalformed(let module, let message):
-                let diagnostic = {
-                    let (line, column) = module.location.computeLineAndColumn()
-                    return "\(wast.path):\(line):\(column) should be malformed: \(message)"
-                }
-                switch module.source {
-                case .text(var wat):
-                    XCTAssertThrowsError(
-                        try {
-                            _ = try wat.encode()
-                            recordFail()
-                        }(), diagnostic())
-                case .quote(let bytes):
-                    XCTAssertThrowsError(
-                        try {
-                            _ = try wat2wasm(String(decoding: bytes, as: UTF8.self))
-                            recordFail()
-                        }(), diagnostic())
-                case .binary: break
-                }
+                checkMalformed(wast: wast, module: module, message: message, recordFail: recordFail)
             default: break
             }
         }
@@ -139,6 +143,38 @@ class EncoderTests: XCTestCase {
                 print("Failed test cases: \(stats.failed.sorted())")
             }
         #endif
+    }
+
+    func testFunctionReferencesProposal() throws {
+        // NOTE: Perform smoke check for function-references proposal here without
+        // bit-to-bit compatibility check with wabt as wabt does not support
+        // function-references proposal yet.
+        for wastFile in Spectest.wastFiles(
+            path: [
+                Spectest.testsuitePath.appendingPathComponent("proposals/function-references")
+            ], include: [], exclude: []
+        ) {
+            print("Checking \(wastFile.path)")
+            var parser = WastParser(
+                try String(contentsOf: wastFile),
+                features: Spectest.deriveFeatureSet(wast: wastFile)
+            )
+            while let directive = try parser.nextDirective() {
+                switch directive {
+                case .module(let directive):
+                    guard case var .text(wat) = directive.source else {
+                        continue
+                    }
+                    _ = wat = wat
+                    // TODO: Enable smoke check for encoding
+                    // _ = try wat.encode()
+                case .assertMalformed(let module, let message):
+                    checkMalformed(wast: wastFile, module: module, message: message, recordFail: {})
+                default:
+                    break
+                }
+            }
+        }
     }
 
     func testEncodeNameSection() throws {
