@@ -166,8 +166,8 @@ class EncoderTests: XCTestCase {
                         continue
                     }
                     _ = wat = wat
-                    // TODO: Enable smoke check for encoding
-                    // _ = try wat.encode()
+                // TODO: Enable smoke check for encoding
+                // _ = try wat.encode()
                 case .assertMalformed(let module, let message):
                     checkMalformed(wast: wastFile, module: module, message: message, recordFail: {})
                 default:

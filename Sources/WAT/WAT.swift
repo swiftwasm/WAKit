@@ -188,9 +188,10 @@ func parseWAT(_ parser: inout Parser, features: WasmFeatureSet) throws -> Wat {
             try unresolvedTypesMapping.add(decl)
         }
         for decl in unresolvedTypesMapping {
-            try typesMap.add(TypesMap.NamedResolvedType(
-                id: decl.id, type: decl.type.resolve(unresolvedTypesMapping)
-            ))
+            try typesMap.add(
+                TypesMap.NamedResolvedType(
+                    id: decl.id, type: decl.type.resolve(unresolvedTypesMapping)
+                ))
         }
     }
 
