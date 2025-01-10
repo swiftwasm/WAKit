@@ -145,6 +145,27 @@ class EncoderTests: XCTestCase {
         #endif
     }
 
+    func smokeCheck(wastFile: URL) throws {
+        print("Checking \(wastFile.path)")
+        var parser = WastParser(
+            try String(contentsOf: wastFile),
+            features: Spectest.deriveFeatureSet(wast: wastFile)
+        )
+        while let directive = try parser.nextDirective() {
+            switch directive {
+            case .module(let directive):
+                guard case var .text(wat) = directive.source else {
+                    continue
+                }
+                _ = try wat.encode()
+            case .assertMalformed(let module, let message):
+                checkMalformed(wast: wastFile, module: module, message: message, recordFail: {})
+            default:
+                break
+            }
+        }
+    }
+
     func testFunctionReferencesProposal() throws {
         // NOTE: Perform smoke check for function-references proposal here without
         // bit-to-bit compatibility check with wabt as wabt does not support
@@ -154,24 +175,7 @@ class EncoderTests: XCTestCase {
                 Spectest.testsuitePath.appendingPathComponent("proposals/function-references")
             ], include: [], exclude: []
         ) {
-            print("Checking \(wastFile.path)")
-            var parser = WastParser(
-                try String(contentsOf: wastFile),
-                features: Spectest.deriveFeatureSet(wast: wastFile)
-            )
-            while let directive = try parser.nextDirective() {
-                switch directive {
-                case .module(let directive):
-                    guard case var .text(wat) = directive.source else {
-                        continue
-                    }
-                    _ = try wat.encode()
-                case .assertMalformed(let module, let message):
-                    checkMalformed(wast: wastFile, module: module, message: message, recordFail: {})
-                default:
-                    break
-                }
-            }
+            try smokeCheck(wastFile: wastFile)
         }
     }
 
