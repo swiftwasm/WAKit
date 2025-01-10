@@ -237,7 +237,7 @@ func parseWAT(_ parser: inout Parser, features: WasmFeatureSet) throws -> Wat {
         }
 
         switch decl.kind {
-        case let .type(decl): break
+        case .type: break
         case let .function(decl):
             try checkImportOrder(decl.importNames)
             let index = try functionsMap.add(decl)

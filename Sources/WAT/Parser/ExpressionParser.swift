@@ -388,7 +388,7 @@ struct ExpressionParser<Visitor: InstructionVisitor> {
         } else if try parser.takeKeyword("extern") {
             return .externRef
         } else if let id = try parser.takeIndexOrId() {
-            let (decl, index) = try wat.types.resolve(use: id)
+            let (_, index) = try wat.types.resolve(use: id)
             return .concrete(typeIndex: UInt32(index))
         }
         throw WatParserError("expected \"func\", \"extern\" or type index", location: parser.lexer.location())
@@ -468,13 +468,13 @@ extension ExpressionParser {
         return UInt32(try wat.types.resolve(use: use).index)
     }
     mutating func visitReturnCallRef(wat: inout Wat) throws -> UInt32 {
-        return 0
+        return try visitCallRef(wat: &wat)
     }
     mutating func visitBrOnNull(wat: inout Wat) throws -> UInt32 {
-        return 0
+        return try labelIndex()
     }
     mutating func visitBrOnNonNull(wat: inout Wat) throws -> UInt32 {
-        return 0
+        return try labelIndex()
     }
     mutating func visitCallIndirect(wat: inout Wat) throws -> (typeIndex: UInt32, tableIndex: UInt32) {
         let tableIndex: UInt32

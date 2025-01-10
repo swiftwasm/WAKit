@@ -409,12 +409,13 @@ struct WatParser {
             if try parser.takeKeyword("declare") {
                 mode = .declarative
             } else {
-                table = try tableUse()
+                table = try takeTableUse()
                 if try parser.takeParenBlockStart("offset") {
                     mode = .active(table: table, offset: .expression(parser.lexer))
                     try parser.skipParenBlock()
                 } else {
-                    if try parser.peek(.leftParen) != nil {
+                    // Need to distinguish '(' instr ')' and reftype without parsing instruction
+                    if try parser.peek(.leftParen) != nil, try fork({ try $0.takeRefType() == nil }) {
                         // abbreviated offset instruction
                         mode = .active(table: table, offset: .singleInstruction(parser.lexer))
                         try parser.consume()  // consume (
@@ -460,6 +461,11 @@ struct WatParser {
             throw WatParserError("unexpected module field \(keyword)", location: location)
         }
         return ModuleField(location: location, kind: kind)
+    }
+
+    private func fork<R>(_ body: (inout WatParser) throws -> R) rethrows -> R {
+        var subParser = WatParser(parser: parser)
+        return try body(&subParser)
     }
 
     mutating func locals() throws -> [LocalDecl] {
@@ -513,7 +519,7 @@ struct WatParser {
         return TypeUse(index: index, inline: inline, location: location)
     }
 
-    mutating func tableUse() throws -> Parser.IndexOrId? {
+    mutating func takeTableUse() throws -> Parser.IndexOrId? {
         var index: Parser.IndexOrId?
         if try parser.takeParenBlockStart("table") {
             index = try parser.expectIndexOrId()

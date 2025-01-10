@@ -30,6 +30,10 @@ protocol BinaryInstructionDecoder {
     @inlinable mutating func visitReturnCall() throws -> UInt32
     /// Decode `return_call_indirect` immediates
     @inlinable mutating func visitReturnCallIndirect() throws -> (typeIndex: UInt32, tableIndex: UInt32)
+    /// Decode `call_ref` immediates
+    @inlinable mutating func visitCallRef() throws -> UInt32
+    /// Decode `return_call_ref` immediates
+    @inlinable mutating func visitReturnCallRef() throws -> UInt32
     /// Decode `typedSelect` immediates
     @inlinable mutating func visitTypedSelect() throws -> ValueType
     /// Decode `local.get` immediates
@@ -62,6 +66,10 @@ protocol BinaryInstructionDecoder {
     @inlinable mutating func visitRefNull() throws -> HeapType
     /// Decode `ref.func` immediates
     @inlinable mutating func visitRefFunc() throws -> UInt32
+    /// Decode `br_on_null` immediates
+    @inlinable mutating func visitBrOnNull() throws -> UInt32
+    /// Decode `br_on_non_null` immediates
+    @inlinable mutating func visitBrOnNonNull() throws -> UInt32
     /// Decode `memory.init` immediates
     @inlinable mutating func visitMemoryInit() throws -> UInt32
     /// Decode `data.drop` immediates
@@ -86,14 +94,6 @@ protocol BinaryInstructionDecoder {
     @inlinable mutating func visitTableGrow() throws -> UInt32
     /// Decode `table.size` immediates
     @inlinable mutating func visitTableSize() throws -> UInt32
-    /// Decode `call_ref` immediates
-    @inlinable mutating func visitCallRef() throws -> UInt32
-    /// Decode `return_call_ref` immediates
-    @inlinable mutating func visitReturnCallRef() throws -> UInt32
-    /// Decode `br_on_null` immediates
-    @inlinable mutating func visitBrOnNull() throws -> UInt32
-    /// Decode `br_on_non_null` immediates
-    @inlinable mutating func visitBrOnNonNull() throws -> UInt32
 }
 @inlinable
 func parseBinaryInstruction<V: InstructionVisitor, D: BinaryInstructionDecoder>(visitor: inout V, decoder: inout D) throws -> Bool {
@@ -526,7 +526,7 @@ func parseBinaryInstruction<V: InstructionVisitor, D: BinaryInstructionDecoder>(
         let (functionIndex) = try decoder.visitRefFunc()
         try visitor.visitRefFunc(functionIndex: functionIndex)
     case 0xD4:
-        try visitor.visitAsNonNull()
+        try visitor.visitRefAsNonNull()
     case 0xD5:
         let (relativeDepth) = try decoder.visitBrOnNull()
         try visitor.visitBrOnNull(relativeDepth: relativeDepth)
