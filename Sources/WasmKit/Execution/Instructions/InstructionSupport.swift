@@ -104,12 +104,12 @@ extension Int32: InstructionImmediate {
 // MARK: - Immediate type extensions
 
 extension Instruction.RefNullOperand {
-    init(result: VReg, type: ReferenceType) {
-        self.init(result: result, rawType: type.rawValue)
+    init(result: VReg, type: AbstractHeapType) {
+        self.init(result: result, rawType: type.rawValue)  // need to figure out rawType here
     }
 
-    var type: ReferenceType {
-        ReferenceType(rawValue: rawType).unsafelyUnwrapped
+    var type: AbstractHeapType {
+        AbstractHeapType(rawValue: rawType).unsafelyUnwrapped
     }
 }
 

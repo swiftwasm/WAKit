@@ -23,8 +23,9 @@ protocol BinaryInstructionEncoder: InstructionVisitor {
     mutating func encodeImmediates(relativeDepth: UInt32) throws
     mutating func encodeImmediates(table: UInt32) throws
     mutating func encodeImmediates(targets: BrTable) throws
-    mutating func encodeImmediates(type: ReferenceType) throws
+    mutating func encodeImmediates(type: HeapType) throws
     mutating func encodeImmediates(type: ValueType) throws
+    mutating func encodeImmediates(typeIndex: UInt32) throws
     mutating func encodeImmediates(value: IEEE754.Float32) throws
     mutating func encodeImmediates(value: IEEE754.Float64) throws
     mutating func encodeImmediates(value: Int32) throws
@@ -81,6 +82,14 @@ extension BinaryInstructionEncoder {
     mutating func visitReturnCallIndirect(typeIndex: UInt32, tableIndex: UInt32) throws {
         try encodeInstruction([0x13])
         try encodeImmediates(typeIndex: typeIndex, tableIndex: tableIndex)
+    }
+    mutating func visitCallRef(typeIndex: UInt32) throws {
+        try encodeInstruction([0x14])
+        try encodeImmediates(typeIndex: typeIndex)
+    }
+    mutating func visitReturnCallRef(typeIndex: UInt32) throws {
+        try encodeInstruction([0x15])
+        try encodeImmediates(typeIndex: typeIndex)
     }
     mutating func visitDrop() throws { try encodeInstruction([0x1A]) }
     mutating func visitSelect() throws { try encodeInstruction([0x1B]) }
@@ -171,7 +180,7 @@ extension BinaryInstructionEncoder {
         try encodeInstruction([0x44])
         try encodeImmediates(value: value)
     }
-    mutating func visitRefNull(type: ReferenceType) throws {
+    mutating func visitRefNull(type: HeapType) throws {
         try encodeInstruction([0xD0])
         try encodeImmediates(type: type)
     }
@@ -179,6 +188,15 @@ extension BinaryInstructionEncoder {
     mutating func visitRefFunc(functionIndex: UInt32) throws {
         try encodeInstruction([0xD2])
         try encodeImmediates(functionIndex: functionIndex)
+    }
+    mutating func visitRefAsNonNull() throws { try encodeInstruction([0xD4]) }
+    mutating func visitBrOnNull(relativeDepth: UInt32) throws {
+        try encodeInstruction([0xD5])
+        try encodeImmediates(relativeDepth: relativeDepth)
+    }
+    mutating func visitBrOnNonNull(relativeDepth: UInt32) throws {
+        try encodeInstruction([0xD6])
+        try encodeImmediates(relativeDepth: relativeDepth)
     }
     mutating func visitI32Eqz() throws { try encodeInstruction([0x45]) }
     mutating func visitCmp(_ cmp: Instruction.Cmp) throws {

@@ -189,6 +189,8 @@ public enum Instruction: Equatable {
     case `callIndirect`(typeIndex: UInt32, tableIndex: UInt32)
     case `returnCall`(functionIndex: UInt32)
     case `returnCallIndirect`(typeIndex: UInt32, tableIndex: UInt32)
+    case `callRef`(typeIndex: UInt32)
+    case `returnCallRef`(typeIndex: UInt32)
     case `drop`
     case `select`
     case `typedSelect`(type: ValueType)
@@ -205,9 +207,12 @@ public enum Instruction: Equatable {
     case `i64Const`(value: Int64)
     case `f32Const`(value: IEEE754.Float32)
     case `f64Const`(value: IEEE754.Float64)
-    case `refNull`(type: ReferenceType)
+    case `refNull`(type: HeapType)
     case `refIsNull`
     case `refFunc`(functionIndex: UInt32)
+    case `refAsNonNull`
+    case `brOnNull`(relativeDepth: UInt32)
+    case `brOnNonNull`(relativeDepth: UInt32)
     case `i32Eqz`
     case `cmp`(Instruction.Cmp)
     case `i64Eqz`
@@ -250,6 +255,8 @@ extension AnyInstructionVisitor {
     public mutating func visitCallIndirect(typeIndex: UInt32, tableIndex: UInt32) throws { return try self.visit(.callIndirect(typeIndex: typeIndex, tableIndex: tableIndex)) }
     public mutating func visitReturnCall(functionIndex: UInt32) throws { return try self.visit(.returnCall(functionIndex: functionIndex)) }
     public mutating func visitReturnCallIndirect(typeIndex: UInt32, tableIndex: UInt32) throws { return try self.visit(.returnCallIndirect(typeIndex: typeIndex, tableIndex: tableIndex)) }
+    public mutating func visitCallRef(typeIndex: UInt32) throws { return try self.visit(.callRef(typeIndex: typeIndex)) }
+    public mutating func visitReturnCallRef(typeIndex: UInt32) throws { return try self.visit(.returnCallRef(typeIndex: typeIndex)) }
     public mutating func visitDrop() throws { return try self.visit(.drop) }
     public mutating func visitSelect() throws { return try self.visit(.select) }
     public mutating func visitTypedSelect(type: ValueType) throws { return try self.visit(.typedSelect(type: type)) }
@@ -266,9 +273,12 @@ extension AnyInstructionVisitor {
     public mutating func visitI64Const(value: Int64) throws { return try self.visit(.i64Const(value: value)) }
     public mutating func visitF32Const(value: IEEE754.Float32) throws { return try self.visit(.f32Const(value: value)) }
     public mutating func visitF64Const(value: IEEE754.Float64) throws { return try self.visit(.f64Const(value: value)) }
-    public mutating func visitRefNull(type: ReferenceType) throws { return try self.visit(.refNull(type: type)) }
+    public mutating func visitRefNull(type: HeapType) throws { return try self.visit(.refNull(type: type)) }
     public mutating func visitRefIsNull() throws { return try self.visit(.refIsNull) }
     public mutating func visitRefFunc(functionIndex: UInt32) throws { return try self.visit(.refFunc(functionIndex: functionIndex)) }
+    public mutating func visitRefAsNonNull() throws { return try self.visit(.refAsNonNull) }
+    public mutating func visitBrOnNull(relativeDepth: UInt32) throws { return try self.visit(.brOnNull(relativeDepth: relativeDepth)) }
+    public mutating func visitBrOnNonNull(relativeDepth: UInt32) throws { return try self.visit(.brOnNonNull(relativeDepth: relativeDepth)) }
     public mutating func visitI32Eqz() throws { return try self.visit(.i32Eqz) }
     public mutating func visitCmp(_ cmp: Instruction.Cmp) throws { return try self.visit(.cmp(cmp)) }
     public mutating func visitI64Eqz() throws { return try self.visit(.i64Eqz) }
@@ -324,6 +334,10 @@ public protocol InstructionVisitor {
     mutating func visitReturnCall(functionIndex: UInt32) throws
     /// Visiting `return_call_indirect` instruction.
     mutating func visitReturnCallIndirect(typeIndex: UInt32, tableIndex: UInt32) throws
+    /// Visiting `call_ref` instruction.
+    mutating func visitCallRef(typeIndex: UInt32) throws
+    /// Visiting `return_call_ref` instruction.
+    mutating func visitReturnCallRef(typeIndex: UInt32) throws
     /// Visiting `drop` instruction.
     mutating func visitDrop() throws
     /// Visiting `select` instruction.
@@ -357,11 +371,17 @@ public protocol InstructionVisitor {
     /// Visiting `f64.const` instruction.
     mutating func visitF64Const(value: IEEE754.Float64) throws
     /// Visiting `ref.null` instruction.
-    mutating func visitRefNull(type: ReferenceType) throws
+    mutating func visitRefNull(type: HeapType) throws
     /// Visiting `ref.is_null` instruction.
     mutating func visitRefIsNull() throws
     /// Visiting `ref.func` instruction.
     mutating func visitRefFunc(functionIndex: UInt32) throws
+    /// Visiting `ref.as_non_null` instruction.
+    mutating func visitRefAsNonNull() throws
+    /// Visiting `br_on_null` instruction.
+    mutating func visitBrOnNull(relativeDepth: UInt32) throws
+    /// Visiting `br_on_non_null` instruction.
+    mutating func visitBrOnNonNull(relativeDepth: UInt32) throws
     /// Visiting `i32.eqz` instruction.
     mutating func visitI32Eqz() throws
     /// Visiting `cmp` category instruction.
@@ -419,6 +439,8 @@ extension InstructionVisitor {
         case let .callIndirect(typeIndex, tableIndex): return try visitCallIndirect(typeIndex: typeIndex, tableIndex: tableIndex)
         case let .returnCall(functionIndex): return try visitReturnCall(functionIndex: functionIndex)
         case let .returnCallIndirect(typeIndex, tableIndex): return try visitReturnCallIndirect(typeIndex: typeIndex, tableIndex: tableIndex)
+        case let .callRef(typeIndex): return try visitCallRef(typeIndex: typeIndex)
+        case let .returnCallRef(typeIndex): return try visitReturnCallRef(typeIndex: typeIndex)
         case .drop: return try visitDrop()
         case .select: return try visitSelect()
         case let .typedSelect(type): return try visitTypedSelect(type: type)
@@ -438,6 +460,9 @@ extension InstructionVisitor {
         case let .refNull(type): return try visitRefNull(type: type)
         case .refIsNull: return try visitRefIsNull()
         case let .refFunc(functionIndex): return try visitRefFunc(functionIndex: functionIndex)
+        case .refAsNonNull: return try visitRefAsNonNull()
+        case let .brOnNull(relativeDepth): return try visitBrOnNull(relativeDepth: relativeDepth)
+        case let .brOnNonNull(relativeDepth): return try visitBrOnNonNull(relativeDepth: relativeDepth)
         case .i32Eqz: return try visitI32Eqz()
         case let .cmp(cmp): return try visitCmp(cmp)
         case .i64Eqz: return try visitI64Eqz()
@@ -477,6 +502,8 @@ extension InstructionVisitor {
     public mutating func visitCallIndirect(typeIndex: UInt32, tableIndex: UInt32) throws {}
     public mutating func visitReturnCall(functionIndex: UInt32) throws {}
     public mutating func visitReturnCallIndirect(typeIndex: UInt32, tableIndex: UInt32) throws {}
+    public mutating func visitCallRef(typeIndex: UInt32) throws {}
+    public mutating func visitReturnCallRef(typeIndex: UInt32) throws {}
     public mutating func visitDrop() throws {}
     public mutating func visitSelect() throws {}
     public mutating func visitTypedSelect(type: ValueType) throws {}
@@ -493,9 +520,12 @@ extension InstructionVisitor {
     public mutating func visitI64Const(value: Int64) throws {}
     public mutating func visitF32Const(value: IEEE754.Float32) throws {}
     public mutating func visitF64Const(value: IEEE754.Float64) throws {}
-    public mutating func visitRefNull(type: ReferenceType) throws {}
+    public mutating func visitRefNull(type: HeapType) throws {}
     public mutating func visitRefIsNull() throws {}
     public mutating func visitRefFunc(functionIndex: UInt32) throws {}
+    public mutating func visitRefAsNonNull() throws {}
+    public mutating func visitBrOnNull(relativeDepth: UInt32) throws {}
+    public mutating func visitBrOnNonNull(relativeDepth: UInt32) throws {}
     public mutating func visitI32Eqz() throws {}
     public mutating func visitCmp(_ cmp: Instruction.Cmp) throws {}
     public mutating func visitI64Eqz() throws {}

@@ -30,6 +30,10 @@ protocol BinaryInstructionDecoder {
     @inlinable mutating func visitReturnCall() throws -> UInt32
     /// Decode `return_call_indirect` immediates
     @inlinable mutating func visitReturnCallIndirect() throws -> (typeIndex: UInt32, tableIndex: UInt32)
+    /// Decode `call_ref` immediates
+    @inlinable mutating func visitCallRef() throws -> UInt32
+    /// Decode `return_call_ref` immediates
+    @inlinable mutating func visitReturnCallRef() throws -> UInt32
     /// Decode `typedSelect` immediates
     @inlinable mutating func visitTypedSelect() throws -> ValueType
     /// Decode `local.get` immediates
@@ -59,9 +63,13 @@ protocol BinaryInstructionDecoder {
     /// Decode `f64.const` immediates
     @inlinable mutating func visitF64Const() throws -> IEEE754.Float64
     /// Decode `ref.null` immediates
-    @inlinable mutating func visitRefNull() throws -> ReferenceType
+    @inlinable mutating func visitRefNull() throws -> HeapType
     /// Decode `ref.func` immediates
     @inlinable mutating func visitRefFunc() throws -> UInt32
+    /// Decode `br_on_null` immediates
+    @inlinable mutating func visitBrOnNull() throws -> UInt32
+    /// Decode `br_on_non_null` immediates
+    @inlinable mutating func visitBrOnNonNull() throws -> UInt32
     /// Decode `memory.init` immediates
     @inlinable mutating func visitMemoryInit() throws -> UInt32
     /// Decode `data.drop` immediates
@@ -132,6 +140,12 @@ func parseBinaryInstruction<V: InstructionVisitor, D: BinaryInstructionDecoder>(
     case 0x13:
         let (typeIndex, tableIndex) = try decoder.visitReturnCallIndirect()
         try visitor.visitReturnCallIndirect(typeIndex: typeIndex, tableIndex: tableIndex)
+    case 0x14:
+        let (typeIndex) = try decoder.visitCallRef()
+        try visitor.visitCallRef(typeIndex: typeIndex)
+    case 0x15:
+        let (typeIndex) = try decoder.visitReturnCallRef()
+        try visitor.visitReturnCallRef(typeIndex: typeIndex)
     case 0x1A:
         try visitor.visitDrop()
     case 0x1B:
@@ -511,6 +525,14 @@ func parseBinaryInstruction<V: InstructionVisitor, D: BinaryInstructionDecoder>(
     case 0xD2:
         let (functionIndex) = try decoder.visitRefFunc()
         try visitor.visitRefFunc(functionIndex: functionIndex)
+    case 0xD4:
+        try visitor.visitRefAsNonNull()
+    case 0xD5:
+        let (relativeDepth) = try decoder.visitBrOnNull()
+        try visitor.visitBrOnNull(relativeDepth: relativeDepth)
+    case 0xD6:
+        let (relativeDepth) = try decoder.visitBrOnNonNull()
+        try visitor.visitBrOnNonNull(relativeDepth: relativeDepth)
     case 0xFC:
 
         let opcode1 = try decoder.claimNextByte()

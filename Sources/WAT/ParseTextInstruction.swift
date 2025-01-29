@@ -49,6 +49,12 @@ func parseTextInstruction<V: InstructionVisitor>(keyword: String, expressionPars
     case "return_call_indirect":
         let (typeIndex, tableIndex) = try expressionParser.visitReturnCallIndirect(wat: &wat)
         return { return try $0.visitReturnCallIndirect(typeIndex: typeIndex, tableIndex: tableIndex) }
+    case "call_ref":
+        let (typeIndex) = try expressionParser.visitCallRef(wat: &wat)
+        return { return try $0.visitCallRef(typeIndex: typeIndex) }
+    case "return_call_ref":
+        let (typeIndex) = try expressionParser.visitReturnCallRef(wat: &wat)
+        return { return try $0.visitReturnCallRef(typeIndex: typeIndex) }
     case "drop": return { return try $0.visitDrop() }
     case "select": return { return try $0.visitSelect() }
     case "local.get":
@@ -160,6 +166,13 @@ func parseTextInstruction<V: InstructionVisitor>(keyword: String, expressionPars
     case "ref.func":
         let (functionIndex) = try expressionParser.visitRefFunc(wat: &wat)
         return { return try $0.visitRefFunc(functionIndex: functionIndex) }
+    case "ref.as_non_null": return { return try $0.visitRefAsNonNull() }
+    case "br_on_null":
+        let (relativeDepth) = try expressionParser.visitBrOnNull(wat: &wat)
+        return { return try $0.visitBrOnNull(relativeDepth: relativeDepth) }
+    case "br_on_non_null":
+        let (relativeDepth) = try expressionParser.visitBrOnNonNull(wat: &wat)
+        return { return try $0.visitBrOnNonNull(relativeDepth: relativeDepth) }
     case "i32.eqz": return { return try $0.visitI32Eqz() }
     case "i32.eq": return { return try $0.visitCmp(.i32Eq) }
     case "i32.ne": return { return try $0.visitCmp(.i32Ne) }

@@ -114,11 +114,13 @@ struct UntypedValue: Equatable, Hashable {
             guard storage & Self.isNullMaskPattern == 0 else { return nil }
             return Int(storage)
         }
-        switch type {
-        case .funcRef:
+        switch type.heapType {
+        case .abstract(.funcRef):
             return .function(decodeOptionalInt())
-        case .externRef:
+        case .abstract(.externRef):
             return .extern(decodeOptionalInt())
+        case .concrete:
+            fatalError("heap type other than `func` and `extern` is not implemented yet")
         }
     }
 

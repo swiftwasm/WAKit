@@ -120,16 +120,33 @@ extension ValueType: WasmEncodable {
         case .f32: encoder.output.append(0x7D)
         case .f64: encoder.output.append(0x7C)
         case .v128: encoder.output.append(0x7B)
-        case .ref(let refType): refType.encode(to: &encoder)
+        case .ref(let refType): encoder.encode(refType)
         }
     }
 }
 
 extension ReferenceType: WasmEncodable {
     func encode(to encoder: inout Encoder) {
+        switch (isNullable, heapType) {
+        // Use short form when available
+        case (true, .externRef): encoder.output.append(0x6F)
+        case (true, .funcRef): encoder.output.append(0x70)
+        default:
+            encoder.output.append(isNullable ? 0x63 : 0x64)
+            encoder.encode(heapType)
+        }
+    }
+}
+
+extension HeapType: WasmEncodable {
+    func encode(to encoder: inout Encoder) {
         switch self {
-        case .funcRef: encoder.output.append(0x70)
-        case .externRef: encoder.output.append(0x6F)
+        case .abstract(.externRef): encoder.output.append(0x6F)
+        case .abstract(.funcRef): encoder.output.append(0x70)
+        case .concrete(let typeIndex):
+            // Note that the typeIndex is decoded as s33,
+            // so we need to encode it as signed.
+            encoder.writeSignedLEB128(Int64(typeIndex))
         }
     }
 }
@@ -194,15 +211,16 @@ struct ElementExprCollector: AnyInstructionVisitor {
 
 extension WAT.WatParser.ElementDecl {
     func encode(to encoder: inout Encoder, wat: inout Wat) throws {
-        func isMemory64(tableIndex: Int) -> Bool {
+        func isMemory64(tableIndex: Int) throws -> Bool {
             guard tableIndex < wat.tablesMap.count else { return false }
-            return wat.tablesMap[tableIndex].type.limits.isMemory64
+            return try wat.tablesMap[tableIndex].type.resolve(wat.types).limits.isMemory64
         }
 
         var flags: UInt32 = 0
         var tableIndex: UInt32? = nil
         var isPassive = false
         var hasTableIndex = false
+        let type = try type.resolve(wat.types)
         switch self.mode {
         case .active(let table, _):
             let index: Int?
@@ -233,7 +251,7 @@ extension WAT.WatParser.ElementDecl {
         try collector.parse(indices: indices, wat: &wat)
         var useExpression: Bool {
             // if all instructions are ref.func, use function indices representation
-            return !collector.isAllRefFunc || self.type != .funcRef
+            return !collector.isAllRefFunc || type != .funcRef
         }
         if useExpression {
             // use expression
@@ -252,7 +270,7 @@ extension WAT.WatParser.ElementDecl {
                 try encoder.writeInstruction(lexer: &lexer, wat: &wat)
             case .synthesized(let offset):
                 var exprEncoder = ExpressionEncoder()
-                if isMemory64(tableIndex: Int(tableIndex ?? 0)) {
+                if try isMemory64(tableIndex: Int(tableIndex ?? 0)) {
                     try exprEncoder.visitI64Const(value: Int64(offset))
                 } else {
                     try exprEncoder.visitI32Const(value: Int32(offset))
@@ -324,6 +342,7 @@ extension Export: WasmEncodable {
 
 extension WatParser.GlobalDecl {
     func encode(to encoder: inout Encoder, wat: inout Wat) throws {
+        let type = try self.type.resolve(wat.types)
         encoder.encode(type)
         guard case var .definition(expr) = kind else {
             fatalError("imported global declaration should not be encoded here")
@@ -496,6 +515,7 @@ struct ExpressionEncoder: BinaryInstructionEncoder {
     mutating func encodeImmediates(functionIndex: UInt32) throws { encodeUnsigned(functionIndex) }
     mutating func encodeImmediates(globalIndex: UInt32) throws { encodeUnsigned(globalIndex) }
     mutating func encodeImmediates(localIndex: UInt32) throws { encodeUnsigned(localIndex) }
+    mutating func encodeImmediates(typeIndex: UInt32) throws { encodeUnsigned(typeIndex) }
     mutating func encodeImmediates(memarg: WasmParser.MemArg) throws {
         encodeUnsigned(UInt(memarg.align))
         encodeUnsigned(memarg.offset)
@@ -510,7 +530,7 @@ struct ExpressionEncoder: BinaryInstructionEncoder {
         encodeUnsigned(targets.defaultIndex)
     }
     mutating func encodeImmediates(type: WasmTypes.ValueType) throws { encoder.encode(type) }
-    mutating func encodeImmediates(type: WasmTypes.ReferenceType) throws { encoder.encode(type) }
+    mutating func encodeImmediates(type: WasmTypes.HeapType) throws { encoder.encode(type) }
     mutating func encodeImmediates(value: Int32) throws { encodeSigned(value) }
     mutating func encodeImmediates(value: Int64) throws { encodeSigned(value) }
     mutating func encodeImmediates(value: WasmParser.IEEE754.Float32) throws { encodeFixedWidth(value.bitPattern) }
@@ -557,10 +577,11 @@ func encode(module: inout Wat, options: EncodeOptions) throws -> [UInt8] {
                     // Encode locals
                     var localsEntries: [(type: ValueType, count: UInt32)] = []
                     for local in locals {
-                        if localsEntries.last?.type == local.type {
+                        let type = try local.type.resolve(module.types)
+                        if localsEntries.last?.type == type {
                             localsEntries[localsEntries.count - 1].count += 1
                         } else {
-                            localsEntries.append((type: local.type, count: 1))
+                            localsEntries.append((type: type, count: 1))
                         }
                     }
                     exprEncoder.encoder.encodeVector(localsEntries) { local, encoder in
@@ -604,9 +625,9 @@ func encode(module: inout Wat, options: EncodeOptions) throws -> [UInt8] {
     // Section 4: Table section
     let tables = module.tablesMap.definitions()
     if !tables.isEmpty {
-        encoder.section(id: 0x04) { encoder in
-            encoder.encodeVector(tables) { table, encoder in
-                table.type.encode(to: &encoder)
+        try encoder.section(id: 0x04) { encoder in
+            try encoder.encodeVector(tables) { table, encoder in
+                try table.type.resolve(module.types).encode(to: &encoder)
             }
         }
     }

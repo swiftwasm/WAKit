@@ -2,7 +2,7 @@ import WasmParser
 import WasmTypes
 
 struct ExpressionParser<Visitor: InstructionVisitor> {
-    typealias LocalsMap = NameMapping<WatParser.LocalDecl>
+    typealias LocalsMap = NameMapping<WatParser.ResolvedLocalDecl>
     private struct LabelStack {
         private var stack: [String?] = []
 
@@ -43,10 +43,11 @@ struct ExpressionParser<Visitor: InstructionVisitor> {
         type: WatParser.FunctionType,
         locals: [WatParser.LocalDecl],
         lexer: Lexer,
-        features: WasmFeatureSet
+        features: WasmFeatureSet,
+        typeMap: TypesNameMapping
     ) throws {
         self.parser = Parser(lexer)
-        self.locals = try Self.computeLocals(type: type, locals: locals)
+        self.locals = try Self.computeLocals(type: type, locals: locals, typeMap: typeMap)
         self.features = features
     }
 
@@ -56,13 +57,17 @@ struct ExpressionParser<Visitor: InstructionVisitor> {
         self.features = features
     }
 
-    static func computeLocals(type: WatParser.FunctionType, locals: [WatParser.LocalDecl]) throws -> LocalsMap {
+    static func computeLocals(
+        type: WatParser.FunctionType,
+        locals: [WatParser.LocalDecl],
+        typeMap: TypesNameMapping
+    ) throws -> LocalsMap {
         var localsMap = LocalsMap()
         for (name, type) in zip(type.parameterNames, type.signature.parameters) {
-            try localsMap.add(WatParser.LocalDecl(id: name, type: type))
+            try localsMap.add(.init(id: name, type: type))
         }
         for local in locals {
-            try localsMap.add(local)
+            try localsMap.add(local.resolve(typeMap))
         }
         return localsMap
     }
@@ -156,6 +161,17 @@ struct ExpressionParser<Visitor: InstructionVisitor> {
             let value = try takeNaNPattern(canonical: .f32CanonicalNaN, arithmetic: .f32ArithmeticNaN)
         {
             return value
+        }
+
+        // WAST predication allows omitting some concrete specifiers
+        if try parser.takeParenBlockStart("ref.null"), try parser.isEndOfParen() {
+            return .refNull(nil)
+        }
+        if try parser.takeParenBlockStart("ref.func"), try parser.isEndOfParen() {
+            return .refFunc(functionIndex: nil)
+        }
+        if try parser.takeParenBlockStart("ref.extern"), try parser.isEndOfParen() {
+            return .refFunc(functionIndex: nil)
         }
         parser = initialParser
         return nil
@@ -261,8 +277,10 @@ struct ExpressionParser<Visitor: InstructionVisitor> {
         case "select":
             // Special handling for "select", which have two variants 1. with type, 2. without type
             let results = try withWatParser({ try $0.results() })
+            let types = wat.types
             return { visitor in
                 if let type = results.first {
+                    let type = try type.resolve(types)
                     return try visitor.visitTypedSelect(type: type)
                 } else {
                     return try visitor.visitSelect()
@@ -338,7 +356,9 @@ struct ExpressionParser<Visitor: InstructionVisitor> {
     }
 
     private mutating func blockType(wat: inout Wat) throws -> BlockType {
-        let results = try withWatParser({ try $0.results() })
+        let results = try withWatParser {
+            try $0.results().map { try $0.resolve(wat.types) }
+        }
         if !results.isEmpty {
             return try wat.types.resolveBlockType(results: results)
         }
@@ -361,13 +381,17 @@ struct ExpressionParser<Visitor: InstructionVisitor> {
         return UInt32(index)
     }
 
-    private mutating func refKind() throws -> ReferenceType {
+    /// https://webassembly.github.io/function-references/core/text/types.html#text-heaptype
+    private mutating func heapType(wat: inout Wat) throws -> HeapType {
         if try parser.takeKeyword("func") {
             return .funcRef
         } else if try parser.takeKeyword("extern") {
             return .externRef
+        } else if let id = try parser.takeIndexOrId() {
+            let (_, index) = try wat.types.resolve(use: id)
+            return .concrete(typeIndex: UInt32(index))
         }
-        throw WatParserError("expected \"func\" or \"extern\"", location: parser.lexer.location())
+        throw WatParserError("expected \"func\", \"extern\" or type index", location: parser.lexer.location())
     }
 
     private mutating func memArg(defaultAlign: UInt32) throws -> MemArg {
@@ -439,6 +463,19 @@ extension ExpressionParser {
         let use = try parser.expectIndexOrId()
         return UInt32(try wat.functionsMap.resolve(use: use).index)
     }
+    mutating func visitCallRef(wat: inout Wat) throws -> UInt32 {
+        let use = try parser.expectIndexOrId()
+        return UInt32(try wat.types.resolve(use: use).index)
+    }
+    mutating func visitReturnCallRef(wat: inout Wat) throws -> UInt32 {
+        return try visitCallRef(wat: &wat)
+    }
+    mutating func visitBrOnNull(wat: inout Wat) throws -> UInt32 {
+        return try labelIndex()
+    }
+    mutating func visitBrOnNonNull(wat: inout Wat) throws -> UInt32 {
+        return try labelIndex()
+    }
     mutating func visitCallIndirect(wat: inout Wat) throws -> (typeIndex: UInt32, tableIndex: UInt32) {
         let tableIndex: UInt32
         if let tableId = try parser.takeIndexOrId() {
@@ -498,8 +535,8 @@ extension ExpressionParser {
     mutating func visitF64Const(wat: inout Wat) throws -> IEEE754.Float64 {
         return try parser.expectFloat64()
     }
-    mutating func visitRefNull(wat: inout Wat) throws -> ReferenceType {
-        return try refKind()
+    mutating func visitRefNull(wat: inout Wat) throws -> HeapType {
+        return try heapType(wat: &wat)
     }
     mutating func visitRefFunc(wat: inout Wat) throws -> UInt32 {
         return try functionIndex(wat: &wat)

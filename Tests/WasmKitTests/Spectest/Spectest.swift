@@ -8,6 +8,46 @@ private func loadStringArrayFromEnvironment(_ key: String) -> [String] {
 }
 
 @available(macOS 11, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+public struct SpectestResult {
+    var passed = 0
+    var skipped = 0
+    var failed = 0
+    var total: Int { passed + skipped + failed }
+    var failedCases: Set<String> = []
+
+    mutating func append(_ testCase: TestCase, _ result: Result) {
+        switch result {
+        case .passed:
+            passed += 1
+        case .skipped:
+            skipped += 1
+        case .failed:
+            failed += 1
+            failedCases.insert(testCase.path)
+        }
+    }
+
+    func percentage(_ numerator: Int, _ denominator: Int) -> String {
+        "\(Int(Double(numerator) / Double(denominator) * 100))%"
+    }
+
+    func sortedFailedCases() -> [String] {
+        failedCases.map { URL(fileURLWithPath: $0).pathComponents.suffix(2).joined(separator: "/") }.sorted()
+    }
+
+    func dump() {
+        print(
+            "\(passed)/\(total) (\(percentage(passed, total)) passing, \(percentage(skipped, total)) skipped, \(percentage(failed, total)) failed)"
+        )
+        guard !failedCases.isEmpty else { return }
+        print("Failed cases:")
+        for testCase in failedCases.sorted() {
+            print("  \(testCase)")
+        }
+    }
+}
+
+@available(macOS 11, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
 public func spectest(
     path: [String],
     include: [String]? = nil,
@@ -16,6 +56,18 @@ public func spectest(
     parallel: Bool = true,
     configuration: EngineConfiguration = .init()
 ) async throws -> Bool {
+    try await spectestResult(path: path, include: include, exclude: exclude, verbose: verbose, parallel: parallel, configuration: configuration).failed == 0
+}
+
+@available(macOS 11, iOS 14.0, watchOS 7.0, tvOS 14.0, *)
+public func spectestResult(
+    path: [String],
+    include: [String]? = nil,
+    exclude: [String]? = nil,
+    verbose: Bool = false,
+    parallel: Bool = true,
+    configuration: EngineConfiguration = .init()
+) async throws -> SpectestResult {
     let printVerbose = verbose
     @Sendable func log(_ message: String, verbose: Bool = false) {
         if !verbose || printVerbose {
@@ -28,10 +80,6 @@ public func spectest(
             fputs("\(path):\(line): " + message + "\n", stderr)
         }
     }
-    func percentage(_ numerator: Int, _ denominator: Int) -> String {
-        "\(Int(Double(numerator) / Double(denominator) * 100))%"
-    }
-
     let include = include ?? loadStringArrayFromEnvironment("WASMKIT_SPECTEST_INCLUDE")
     let exclude = exclude ?? loadStringArrayFromEnvironment("WASMKIT_SPECTEST_EXCLUDE")
 
@@ -44,7 +92,7 @@ public func spectest(
 
     guard !testCases.isEmpty else {
         log("No test found")
-        return true
+        return SpectestResult()
     }
 
     // https://github.com/WebAssembly/spec/tree/8a352708cffeb71206ca49a0f743bdc57269fb1a/interpreter#spectest-host-module
@@ -103,37 +151,6 @@ public func spectest(
         return testCaseResults
     }
 
-    struct SpectestResult {
-        var passed = 0
-        var skipped = 0
-        var failed = 0
-        var total: Int { passed + skipped + failed }
-        var failedCases: Set<String> = []
-
-        mutating func append(_ testCase: TestCase, _ result: Result) {
-            switch result {
-            case .passed:
-                passed += 1
-            case .skipped:
-                skipped += 1
-            case .failed:
-                failed += 1
-                failedCases.insert(testCase.path)
-            }
-        }
-
-        func dump() {
-            print(
-                "\(passed)/\(total) (\(percentage(passed, total)) passing, \(percentage(skipped, total)) skipped, \(percentage(failed, total)) failed)"
-            )
-            guard !failedCases.isEmpty else { return }
-            print("Failed cases:")
-            for testCase in failedCases.sorted() {
-                print("  \(testCase)")
-            }
-        }
-    }
-
     let result: SpectestResult
 
     if parallel {
@@ -168,5 +185,5 @@ public func spectest(
 
     result.dump()
 
-    return result.failed == 0
+    return result
 }

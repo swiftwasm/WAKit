@@ -64,6 +64,8 @@ extension ConstExpression {
             switch type {
             case .externRef: return .ref(.extern(nil))
             case .funcRef: return .ref(.function(nil))
+            default:
+                throw ValidationError(.illegalConstExpressionInstruction(constInst))
             }
         case .refFunc(let functionIndex):
             return try .ref(context.functionRef(functionIndex))

@@ -21,8 +21,12 @@ protocol ImportableModuleFieldDecl {
     var importNames: WatParser.ImportNames? { get }
 }
 
+protocol NameToIndexResolver {
+    func resolveIndex(use: Parser.IndexOrId) throws -> Int
+}
+
 /// A map of module field declarations indexed by their name
-struct NameMapping<Decl: NamedModuleFieldDecl> {
+struct NameMapping<Decl: NamedModuleFieldDecl>: NameToIndexResolver {
     private var decls: [Decl] = []
     private var nameToIndex: [String: Int] = [:]
 
@@ -94,15 +98,21 @@ extension NameMapping where Decl: ImportableModuleFieldDecl {
     }
 }
 
+typealias TypesNameMapping = NameMapping<TypesMap.NamedResolvedType>
+
 /// A map of unique function types indexed by their name or type signature
 struct TypesMap {
-    private var nameMapping = NameMapping<WatParser.FunctionTypeDecl>()
+    struct NamedResolvedType: NamedModuleFieldDecl {
+        let id: Name?
+        let type: WatParser.FunctionType
+    }
+    private(set) var nameMapping = NameMapping<NamedResolvedType>()
     /// Tracks the earliest index for each function type
     private var indices: [FunctionType: Int] = [:]
 
     /// Adds a new function type to the mapping
     @discardableResult
-    mutating func add(_ decl: WatParser.FunctionTypeDecl) throws -> Int {
+    mutating func add(_ decl: NamedResolvedType) throws -> Int {
         try nameMapping.add(decl)
         // Normalize the function type signature without parameter names
         if let existing = indices[decl.type.signature] {
@@ -120,7 +130,7 @@ struct TypesMap {
             return existing
         }
         return try add(
-            WatParser.FunctionTypeDecl(
+            NamedResolvedType(
                 id: nil,
                 type: WatParser.FunctionType(signature: signature, parameterNames: [])
             )
@@ -170,10 +180,10 @@ struct TypesMap {
     mutating func resolveBlockType(use: WatParser.TypeUse) throws -> BlockType {
         switch (use.index, use.inline) {
         case let (indexOrId?, inline):
-            let (type, index) = try resolveAndCheck(use: indexOrId, inline: inline)
+            let (type, index) = try resolveAndCheck(use: indexOrId, inline: inline?.resolve(nameMapping))
             return try resolveBlockType(signature: type.signature, resolveSignatureIndex: { _ in index })
         case (nil, let inline?):
-            return try resolveBlockType(signature: inline.signature)
+            return try resolveBlockType(signature: inline.resolve(nameMapping).signature)
         case (nil, nil): return .empty
         }
     }
@@ -183,7 +193,7 @@ struct TypesMap {
         case let (indexOrId?, _):
             return try nameMapping.resolveIndex(use: indexOrId)
         case (nil, let inline):
-            let inline = inline?.signature ?? WasmTypes.FunctionType(parameters: [], results: [])
+            let inline = try inline?.resolve(nameMapping).signature ?? WasmTypes.FunctionType(parameters: [], results: [])
             return try addAnonymousSignature(inline)
         }
     }
@@ -209,16 +219,16 @@ struct TypesMap {
     mutating func resolve(use: WatParser.TypeUse) throws -> (type: WatParser.FunctionType, index: Int) {
         switch (use.index, use.inline) {
         case let (indexOrId?, inline):
-            return try resolveAndCheck(use: indexOrId, inline: inline)
+            return try resolveAndCheck(use: indexOrId, inline: inline?.resolve(nameMapping))
         case (nil, let inline):
             // If no index and no inline type, then it's a function type with no parameters or results
-            let inline = inline ?? WatParser.FunctionType(signature: WasmTypes.FunctionType(parameters: [], results: []), parameterNames: [])
+            let inline = try inline?.resolve(nameMapping) ?? WatParser.FunctionType(signature: WasmTypes.FunctionType(parameters: [], results: []), parameterNames: [])
             // Check if the inline type already exists
             if let index = indices[inline.signature] {
                 return (inline, index)
             }
             // Add inline type to the index space if it doesn't already exist
-            let index = try add(WatParser.FunctionTypeDecl(id: nil, type: inline))
+            let index = try add(NamedResolvedType(id: nil, type: inline))
             return (inline, index)
         }
     }
@@ -233,11 +243,11 @@ extension TypesMap: Collection {
         nameMapping.index(after: i)
     }
 
-    subscript(position: Int) -> WatParser.FunctionTypeDecl {
+    subscript(position: Int) -> NamedResolvedType {
         return nameMapping[position]
     }
 
-    func makeIterator() -> NameMapping<WatParser.FunctionTypeDecl>.Iterator {
+    func makeIterator() -> NameMapping<NamedResolvedType>.Iterator {
         return nameMapping.makeIterator()
     }
 }

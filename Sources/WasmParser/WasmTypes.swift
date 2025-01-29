@@ -49,10 +49,10 @@ public enum BlockType: Equatable {
 /// > Note:
 /// <https://webassembly.github.io/spec/core/syntax/types.html#limits>
 public struct Limits: Equatable {
-    public let min: UInt64
-    public let max: UInt64?
-    public let isMemory64: Bool
-    public let shared: Bool
+    public var min: UInt64
+    public var max: UInt64?
+    public var isMemory64: Bool
+    public var shared: Bool
 
     public init(min: UInt64, max: UInt64? = nil, isMemory64: Bool = false, shared: Bool = false) {
         self.min = min
@@ -69,8 +69,8 @@ public typealias MemoryType = Limits
 /// > Note:
 /// <https://webassembly.github.io/spec/core/syntax/types.html#table-types>
 public struct TableType: Equatable {
-    public let elementType: ReferenceType
-    public let limits: Limits
+    public var elementType: ReferenceType
+    public var limits: Limits
 
     public init(elementType: ReferenceType, limits: Limits) {
         self.elementType = elementType

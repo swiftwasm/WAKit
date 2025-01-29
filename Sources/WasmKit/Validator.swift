@@ -333,9 +333,11 @@ struct ModuleValidator {
 extension WasmTypes.Reference {
     /// Checks if the reference type matches the expected type.
     func checkType(_ type: WasmTypes.ReferenceType) throws {
-        switch (self, type) {
-        case (.function, .funcRef): return
-        case (.extern, .externRef): return
+        switch (self, type.heapType, type.isNullable) {
+        case (.function(_?), .funcRef, _): return
+        case (.function(nil), .funcRef, true): return
+        case (.extern(_?), .externRef, _): return
+        case (.extern(nil), .externRef, true): return
         default:
             throw ValidationError(.expectTypeButGot(expected: "\(type)", got: "\(self)"))
         }
